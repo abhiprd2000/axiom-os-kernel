@@ -1,4 +1,3 @@
-
 pub struct Benchmark {
     pub name: &'static str,
     pub iterations: u64,
@@ -29,7 +28,8 @@ impl Benchmark {
     }
 }
 
-/// Read CPU timestamp counter - real hardware cycle count
+/// x86_64: read RDTSC hardware cycle counter
+#[cfg(target_arch = "x86_64")]
 pub fn read_tsc() -> u64 {
     let lo: u32;
     let hi: u32;
@@ -41,4 +41,18 @@ pub fn read_tsc() -> u64 {
         );
     }
     ((hi as u64) << 32) | (lo as u64)
+}
+
+/// ARM64: read CNTVCT_EL0 virtual counter register
+/// Equivalent to RDTSC on x86 - counts CPU cycles
+#[cfg(target_arch = "aarch64")]
+pub fn read_tsc() -> u64 {
+    let val: u64;
+    unsafe {
+        core::arch::asm!(
+            "mrs {}, cntvct_el0",
+            out(reg) val,
+        );
+    }
+    val
 }

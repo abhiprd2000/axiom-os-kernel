@@ -8,3 +8,9 @@ target = "x86_64-blog_os.json"
 
 [target.'cfg(target_os = "none")']
 runner = "bootimage runner"
+
+[target.aarch64-axiom]
+rustflags = [
+  "-C", "link-arg=-Tsrc/arch/aarch64/linker.ld",
+  "-C", "link-arg=--entry=_start",
+]

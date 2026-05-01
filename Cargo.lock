@@ -27,6 +27,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "axiom_os"
+version = "0.1.0"
+dependencies = [
+ "ar",
+ "blake3",
+ "bootloader",
+ "conquer-once",
+ "crossbeam-queue",
+ "futures-util",
+ "lazy_static",
+ "linked_list_allocator",
+ "pc-keyboard",
+ "pic8259",
+ "spin 0.5.2",
+ "uart_16550",
+ "volatile 0.2.7",
+ "x86_64",
+]
+
+[[package]]
 name = "bit_field"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -56,26 +76,6 @@ dependencies = [
  "cfg-if",
  "constant_time_eq",
  "cpufeatures",
-]
-
-[[package]]
-name = "blog_os"
-version = "0.1.0"
-dependencies = [
- "ar",
- "blake3",
- "bootloader",
- "conquer-once",
- "crossbeam-queue",
- "futures-util",
- "lazy_static",
- "linked_list_allocator",
- "pc-keyboard",
- "pic8259",
- "spin 0.5.2",
- "uart_16550",
- "volatile 0.2.7",
- "x86_64",
 ]
 
 [[package]]
