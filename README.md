@@ -35,7 +35,7 @@ qemu-system-x86_64 \
 
 ## Research Paper
 
-See: [axiom-os-research repo link]
+See: (https://zenodo.org/records/19387932)
 
 ## License
 
