@@ -164,7 +164,16 @@ impl Fat32 {
                 let data_sector = self.cluster_to_sector(cluster);
                 let mut buf = [0u8; SECTOR_SIZE];
                 self.disk.read_sector(data_sector, &mut buf);
-                return Some(buf[..size].to_vec());
+                let data = buf[..size].to_vec();
+                // Auto-verify provenance on every read
+                let current_hash = blake3::hash(&data);
+                let stored: [u8; 8] = entry[12..20].try_into().ok()?;
+                let computed: [u8; 8] = current_hash.as_bytes()[..8].try_into().ok()?;
+                if stored != computed {
+                    println!("[AXIOM KERNEL] READ BLOCKED: \"{}\" FAT32 provenance violation", filename);
+                    return None;
+                }
+                return Some(data);
             }
         }
         None
