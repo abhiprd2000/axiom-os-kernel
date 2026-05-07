@@ -17,7 +17,7 @@ impl<'a> Interpreter<'a> {
             match node {
                 AstNode::Trust { name, value } => {
                     println!("[mitra] trust {} = \"{}\"", name, value);
-                    self.vfs.create(&value, value.as_bytes());
+                    self.vfs.create(&name, value.as_bytes());
                     println!("[mitra] file \"{}\" stored with provenance hash", value);
                 }
                 AstNode::TrustedData { name, content } => {
