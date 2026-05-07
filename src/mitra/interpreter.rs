@@ -22,7 +22,8 @@ impl<'a> Interpreter<'a> {
                 }
                 AstNode::TrustedData { name, content } => {
                     println!("[mitra] trusted_data {}", name);
-                    let td = TrustedData::new("mitra_trusted", content.as_bytes());
+                    self.vfs.create(&name, content.as_bytes());
+                    let td = TrustedData::new(&name, content.as_bytes());
                     let ok = td.verify_or_halt();
                     if ok {
                         println!("[mitra] trusted_data \"{}\" approved for execution", name);
