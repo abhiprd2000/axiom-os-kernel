@@ -20,8 +20,9 @@
 - VFS read+verify includes: hash recomputation + comparison + memory lookup
 
 ## ARM64 Results
-Pending — Raspberry Pi hardware benchmarks in progress.
-QEMU ARM results will be added after hardware verification.
+BLAKE3 executes correctly on ARM64 QEMU (Cortex-A57 model).
+CNTVCT_EL0 on QEMU is a virtual timer, not a cycle counter — values do not reflect real silicon performance.
+Hardware benchmarks deferred pending Raspberry Pi availability.
 
 ## Comparison: Axiom OS vs Linux IMA
 
