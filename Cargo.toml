@@ -1,8 +1,11 @@
 [package]
 name = "axiom_os"
-version = "0.1.0"
-authors = ["Philipp Oppermann <dev@phil-opp.com>"]
+version = "0.2.0-alpha"
+authors = ["Abhimanyu Prasad <8292aniarc@gmail.com>"]
 edition = "2024"
+description = "Axiom OS - bare-metal kernel with BLAKE3 provenance enforcement on every read"
+license = "MIT"
+repository = "https://github.com/abhiprd2000/axiom-os-kernel"
 
 [[test]]
 name = "should_panic"
