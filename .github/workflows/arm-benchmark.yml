@@ -22,12 +22,54 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-arm binutils-aarch64-linux-gnu
 
-      - name: Build ARM64 binary
+      - name: Clone standalone benchmark
+        run: |
+          mkdir -p standalone_bench
+          cat > standalone_bench/Cargo.toml << 'TOML'
+[package]
+name = "arm_bench"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "arm_bench"
+path = "main.rs"
+
+[dependencies]
+blake3 = "1.8.3"
+TOML
+          cat > standalone_bench/main.rs << 'RUST'
+use std::time::Instant;
+
+fn main() {
+    let data = b"axiom os arm64 blake3 benchmark data";
+    let iterations = 10000u64;
+    for _ in 0..1000 { let _ = blake3::hash(data); }
+    let start = Instant::now();
+    for _ in 0..iterations { let _ = blake3::hash(data); }
+    let elapsed = start.elapsed();
+    println!("AXIOM OS Native ARM64 BLAKE3 Benchmark");
+    println!("Platform: {}", std::env::consts::ARCH);
+    println!("Iterations: {}", iterations);
+    println!("ns/op: {}", elapsed.as_nanos() as u64 / iterations);
+    println!("us/op: {}", elapsed.as_micros() as u64 / iterations);
+    let hash = blake3::hash(data);
+    println!("Hash: {:02x?}", &hash.as_bytes()[..8]);
+}
+RUST
+
+      - name: Run native ARM64 benchmark
+        run: |
+          cd standalone_bench
+          cargo run --release 2>&1 | tee ../native_arm_benchmark.txt
+          cat ../native_arm_benchmark.txt
+
+      - name: Build ARM64 kernel binary
         run: |
           cargo build --bin axiom_os_arm --target aarch64-axiom.json -Z build-std=core,alloc --release
           aarch64-linux-gnu-objcopy -O binary target/aarch64-axiom/release/axiom_os_arm target/aarch64-axiom/release/axiom_os_arm.bin
 
-      - name: Run benchmark
+      - name: Run kernel in QEMU
         run: |
           timeout 30 qemu-system-aarch64 \
             -machine virt \
@@ -36,10 +78,11 @@ jobs:
             -device loader,file=target/aarch64-axiom/release/axiom_os_arm.bin,addr=0x41000000,cpu-num=0 \
             -device loader,addr=0x41000000,cpu-num=0 \
             -m 256M 2>&1 | tee benchmark_output.txt || true
-          cat benchmark_output.txt
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: arm-benchmark-results
-          path: benchmark_output.txt
+          path: |
+            benchmark_output.txt
+            native_arm_benchmark.txt
