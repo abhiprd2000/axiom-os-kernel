@@ -15,6 +15,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           targets: aarch64-unknown-none
+          components: rust-src
 
       - name: Install dependencies
         run: |
