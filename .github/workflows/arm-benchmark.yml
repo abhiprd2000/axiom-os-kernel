@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-system-arm binutils-aarch64-linux-gnu nasm
+          sudo apt-get install -y qemu-system-arm binutils-aarch64-linux-gnu
 
       - name: Build ARM64 binary
         run: |

@@ -3,8 +3,10 @@ use std::path::PathBuf;
 
 fn main() {
     let target = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    let target_triple = env::var("TARGET").unwrap_or_default();
     
-    if target != "x86_64" {
+    // Only assemble switch.s when building for x86_64 bare metal
+    if target != "x86_64" || !target_triple.contains("x86_64") {
         return;
     }
 
