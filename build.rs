@@ -2,6 +2,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    let target = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    
+    if target != "x86_64" {
+        return;
+    }
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     
     println!("cargo:rerun-if-changed=src/task/switch.s");
