@@ -86,7 +86,7 @@ pub fn interpret_command(command: &str) {
         }
         "clear" => { vga_buffer::clear_screen(); }
         "info" => {
-            println!("Axiom OS v0.3.0 | Arch: x86_64 | Bare Metal");
+            println!("Axiom OS v0.2.0-alpha | Arch: x86_64 + aarch64 | Bare Metal");
             println!("Hash: BLAKE3 | Storage: FAT32 RAM Disk (4MB)");
             println!("Hardware-enforced data provenance active.");
         }
@@ -308,7 +308,7 @@ pub fn interpret_command(command: &str) {
         "sysinfo" => {
             println!("=== AXIOM OS System Information ===");
             println!("  OS:        Axiom OS v0.3.0");
-            println!("  Arch:      x86_64 bare metal");
+            println!("  Arch:      x86_64 + aarch64 (dual architecture)");
             println!("  Hash:      BLAKE3 (cryptographic)");
             println!("  Heap:      {} KB mapped at {:#x}",
                 crate::allocator::HEAP_SIZE / 1024,
