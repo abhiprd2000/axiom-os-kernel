@@ -8,7 +8,7 @@ use uart::{uart_puts, uart_put_u64};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main_arm() -> ! {
-    uart_puts("\n  AXIOM OS v0.3.0 - aarch64\n\n");
+    uart_puts("\n  AXIOM OS v0.2.0-alpha - aarch64\n\n");
 
     let sp: u64;
     unsafe { core::arch::asm!("mov {}, sp", out(reg) sp); }
@@ -27,13 +27,13 @@ pub extern "C" fn kernel_main_arm() -> ! {
     uart_puts("  BLAKE3: OK\n\n");
 
     // Benchmark
-    uart_puts("  Benchmarking BLAKE3 (100 iters)...\n");
+    uart_puts("  Benchmarking BLAKE3 (1000 iters)...\n");
     let start = read_cntvct();
-    for _ in 0..100u32 {
+    for _ in 0..1000u32 {
         let _ = run_blake3();
     }
     let end = read_cntvct();
-    let avg = (end - start) / 100;
+    let avg = (end - start) / 1000;
     uart_puts("  Cycles/op: ");
     uart_put_u64(avg);
     uart_puts("\n  Benchmark: OK\n\n");
