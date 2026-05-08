@@ -1,0 +1,44 @@
+name: ARM64 BLAKE3 Benchmark
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  arm-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: aarch64-unknown-none
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm binutils-aarch64-linux-gnu
+
+      - name: Build ARM64 binary
+        run: |
+          cargo build --bin axiom_os_arm --target aarch64-axiom.json -Z build-std=core,alloc --release
+          aarch64-linux-gnu-objcopy -O binary target/aarch64-axiom/release/axiom_os_arm target/aarch64-axiom/release/axiom_os_arm.bin
+
+      - name: Run benchmark
+        run: |
+          timeout 30 qemu-system-aarch64 \
+            -machine virt \
+            -cpu cortex-a57 \
+            -nographic \
+            -device loader,file=target/aarch64-axiom/release/axiom_os_arm.bin,addr=0x41000000,cpu-num=0 \
+            -device loader,addr=0x41000000,cpu-num=0 \
+            -m 256M 2>&1 | tee benchmark_output.txt || true
+          cat benchmark_output.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm-benchmark-results
+          path: benchmark_output.txt
