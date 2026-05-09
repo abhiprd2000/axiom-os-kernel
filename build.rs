@@ -4,20 +4,7 @@ use std::path::PathBuf;
 fn main() {
     let target = env::var("TARGET").unwrap_or_default();
     
-    // Only run nasm for x86_64 bare metal, skip blog_os cross-compile target on ARM runners
     if !target.starts_with("x86_64") {
-        return;
-    }
-
-    // Check if nasm is available before trying to run it
-    let nasm_available = std::process::Command::new("nasm")
-        .arg("--version")
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-
-    if !nasm_available {
-        println!("cargo:warning=nasm not found, skipping switch.s assembly");
         return;
     }
 
