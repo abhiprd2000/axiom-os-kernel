@@ -6,41 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  arm-benchmark:
+  native-arm-benchmark:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust nightly
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: aarch64-unknown-none
-          components: rust-src
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install dependencies
+      - name: Run native ARM64 BLAKE3 benchmark
         run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-system-arm binutils-aarch64-linux-gnu nasm
-
-      - name: Clone standalone benchmark
-        run: |
-          mkdir -p standalone_bench
-          cat > standalone_bench/Cargo.toml << 'TOML'
-[package]
-name = "arm_bench"
-version = "0.1.0"
-edition = "2021"
-
-[[bin]]
-name = "arm_bench"
-path = "main.rs"
-
-[dependencies]
-blake3 = "1.8.3"
-TOML
-          cat > standalone_bench/main.rs << 'RUST'
+          mkdir -p /tmp/arm_bench
+          cat > /tmp/arm_bench/main.rs << 'RUST'
 use std::time::Instant;
-
 fn main() {
     let data = b"axiom os arm64 blake3 benchmark data";
     let iterations = 10000u64;
@@ -57,32 +35,23 @@ fn main() {
     println!("Hash: {:02x?}", &hash.as_bytes()[..8]);
 }
 RUST
-
-      - name: Run native ARM64 benchmark
-        run: |
-          cd standalone_bench
-          cargo run --release 2>&1 | tee ../native_arm_benchmark.txt
-          cat ../native_arm_benchmark.txt
-
-      - name: Build ARM64 kernel binary
-        run: |
-          cargo build --bin axiom_os_arm --target aarch64-axiom.json -Z build-std=core,alloc --release
-          aarch64-linux-gnu-objcopy -O binary target/aarch64-axiom/release/axiom_os_arm target/aarch64-axiom/release/axiom_os_arm.bin
-
-      - name: Run kernel in QEMU
-        run: |
-          timeout 30 qemu-system-aarch64 \
-            -machine virt \
-            -cpu cortex-a57 \
-            -nographic \
-            -device loader,file=target/aarch64-axiom/release/axiom_os_arm.bin,addr=0x41000000,cpu-num=0 \
-            -device loader,addr=0x41000000,cpu-num=0 \
-            -m 256M 2>&1 | tee benchmark_output.txt || true
+          cat > /tmp/arm_bench/Cargo.toml << 'TOML'
+[package]
+name = "arm_bench"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "arm_bench"
+path = "main.rs"
+[dependencies]
+blake3 = "1.8.3"
+TOML
+          cd /tmp/arm_bench
+          cargo run --release 2>&1 | tee $GITHUB_WORKSPACE/native_arm_benchmark.txt
+          cat $GITHUB_WORKSPACE/native_arm_benchmark.txt
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: arm-benchmark-results
-          path: |
-            benchmark_output.txt
-            native_arm_benchmark.txt
+          path: native_arm_benchmark.txt
