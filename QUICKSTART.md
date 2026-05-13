@@ -3,19 +3,21 @@
 ## Prerequisites
 
 ```bash
-# Install Rust nightly
+# Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-rustup toolchain install nightly
-rustup override set nightly
+source ~/.cargo/env
+
+# The repo sets nightly automatically via rust-toolchain file
+# Just add required components
+rustup component add rust-src llvm-tools-preview
+rustup target add aarch64-unknown-none
 
 # Install bootimage
 cargo install bootimage
 
-# Install QEMU
-sudo apt install qemu-system-x86 qemu-system-arm
-
-# Install ARM64 cross tools (for ARM build only)
-sudo apt install binutils-aarch64-linux-gnu
+# Install QEMU and ARM tools
+sudo apt update
+sudo apt install -y qemu-system-x86 qemu-system-arm binutils-aarch64-linux-gnu nasm
 ```
 
 ## Boot x86_64
@@ -26,7 +28,7 @@ cd axiom-os-kernel
 cargo run --bin axiom_os
 ```
 
-Expected output: AXIOM OS v0.2.0-alpha banner with shell prompt.
+Expected: AXIOM OS v0.2.0-alpha banner + shell prompt.
 
 ## Boot ARM64
 
@@ -34,17 +36,19 @@ Expected output: AXIOM OS v0.2.0-alpha banner with shell prompt.
 ./run_arm.sh
 ```
 
-Expected output: AXIOM OS v0.2.0-alpha - aarch64, BLAKE3 hash, benchmark results.
+Expected: AXIOM OS v0.2.0-alpha - aarch64 + BLAKE3 hash + benchmark.
 
-## Run Benchmarks
+## Demo: Tamper Detection (x86_64)
 
-Inside the x86_64 shell:
-bench
-
-## Demo: Tamper Detection
+Type these commands inside the booted OS:
 trust secret hello world
 cat secret
 tamper secret
 cat secret
 
-Last command shows: READ BLOCKED — provenance violation
+Expected on last command: READ BLOCKED — provenance violation
+
+## Run Benchmarks
+bench
+
+Reports BLAKE3 and VFS read+verify cycles with mean and CV.
