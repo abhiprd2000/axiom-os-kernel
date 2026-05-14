@@ -38,7 +38,10 @@ impl FileNode {
     }
 
     pub fn verify(&self) -> bool {
-        provenance_hash(&self.data) == self.provenance_hash
+        crate::provenance::constant_time_eq(
+    &provenance_hash(&self.data),
+    &self.provenance_hash
+)
     }
 }
 

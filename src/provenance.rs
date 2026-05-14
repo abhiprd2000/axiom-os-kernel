@@ -32,3 +32,13 @@ pub fn provenance_hash(data: &[u8]) -> [u8; 32] {
 pub fn tamper(_data: &[u8]) -> &'static [u8] {
     b"TAMPERED: Journalist report from Jharkhand"
 }
+
+/// Constant-time byte comparison — never short-circuits
+/// Prevents timing side-channel attacks on hash comparison
+pub fn constant_time_eq(a: &[u8; 32], b: &[u8; 32]) -> bool {
+    let mut result = 0u8;
+    for i in 0..32 {
+        result |= a[i] ^ b[i];
+    }
+    result == 0
+}
