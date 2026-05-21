@@ -14,3 +14,6 @@ rustflags = [
   "-C", "link-arg=-Tsrc/arch/aarch64/linker.ld",
   "-C", "link-arg=--entry=_start",
 ]
+
+[alias]
+run-arm = "build --bin axiom_os_arm --target aarch64-axiom.json -Z build-std=core,alloc --release"
