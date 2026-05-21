@@ -23,7 +23,6 @@ sudo apt install -y qemu-system-x86 qemu-system-arm binutils-aarch64-linux-gnu n
 ## Boot x86_64
 
 ```bash
-git clone https://github.com/abhiprd2000/axiom-os-kernel.git
 cd axiom-os-kernel
 cargo run --bin axiom_os
 ```

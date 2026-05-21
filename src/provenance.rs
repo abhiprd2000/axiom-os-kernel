@@ -30,7 +30,7 @@ pub fn provenance_hash(data: &[u8]) -> [u8; 32] {
 }
 
 pub fn tamper(_data: &[u8]) -> &'static [u8] {
-    b"TAMPERED: Journalist report from Jharkhand"
+    b"TAMPERED: provenance violation detected"
 }
 
 /// Constant-time byte comparison — never short-circuits

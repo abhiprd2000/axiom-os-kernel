@@ -270,7 +270,7 @@ pub fn interpret_command(command: &str) {
             use crate::benchmark::Benchmark;
             println!("=== Axiom OS Benchmarks ===");
             let mut b = Benchmark::new("blake3_hash");
-            b.run(1000, || { blake3::hash(b"Journalist report from Jharkhand"); });
+            b.run(1000, || { blake3::hash(b"kernel provenance benchmark payload"); });
             b.report();
             let mut b2 = Benchmark::new("vfs_read");
             b2.run(100, || {
@@ -322,7 +322,7 @@ pub fn interpret_command(command: &str) {
                 use crate::benchmark::read_tsc;
                 let start = read_tsc();
                 for _ in 0..100 {
-                    blake3::hash(b"Journalist report from Jharkhand");
+                    blake3::hash(b"kernel provenance benchmark payload");
                 }
                 let end = read_tsc();
                 (end.wrapping_sub(start)) / 100
