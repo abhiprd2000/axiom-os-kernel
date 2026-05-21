@@ -49,9 +49,13 @@ cargo run --bin axiom_os
 ```
 
 ## Tamper Detection Demo
+
 trust secret hello world
+
 cat secret          # returns: hello world
+
 tamper secret       # flips byte in memory
+
 cat secret          # READ BLOCKED: provenance violation
 
 ## Benchmarks
@@ -68,9 +72,13 @@ BLAKE3 constitutes 19.7% of total read+verify overhead.
 ## Mitra DSL
 
 Domain-specific language with kernel-enforced provenance:
+
 trusted_data secret = classified report
+
 verify secret     → KERNEL VERIFIED
+
 [tamper]
+
 verify secret     → KERNEL BLOCKED
 
 ## Known Limitations
