@@ -1,3 +1,5 @@
+This repository reflects the v0.2.0-alpha research prototype described in the submitted manuscript.
+
 # Axiom OS
 
 A bare-metal OS kernel in Rust enforcing BLAKE3 cryptographic 
