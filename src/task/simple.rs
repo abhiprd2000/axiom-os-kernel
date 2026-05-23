@@ -32,6 +32,7 @@ unsafe extern "C" {
 const STACK_SIZE: usize = 4096 * 5;
 
 pub struct SimpleTask {
+    #[allow(dead_code)]
     id: usize,
     stack: [u8; STACK_SIZE],
     context: TaskContext,
