@@ -75,7 +75,8 @@ impl Process {
         &self.task_context as *const TaskContext
     }
 
-    pub unsafe fn activate(&self) {
+   pub unsafe fn activate(&self) {
+    unsafe {
         Cr3::write(self.page_table_frame, Cr3::read().1);
     }
 }
