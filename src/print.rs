@@ -55,4 +55,4 @@ fn uart_putc(c: u8) {
 // x86 versions are already defined in vga_buffer.rs
 // These are just re-exports to satisfy the compiler on x86
 #[cfg(target_arch = "x86_64")]
-pub use crate::{serial_print as _, serial_println as _};
+
