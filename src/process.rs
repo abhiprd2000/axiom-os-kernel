@@ -80,6 +80,7 @@ impl Process {
         Cr3::write(self.page_table_frame, Cr3::read().1);
     }
 }
+}
 
 pub struct ProcessManager {
     processes: Vec<Process>,
