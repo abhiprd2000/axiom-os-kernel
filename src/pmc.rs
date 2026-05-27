@@ -74,16 +74,24 @@ pub fn read_cache_misses() -> u64 {
     unsafe { rdpmc(0) }
 }
 
-/// Measure LLC cache misses during a closure
-/// Returns (result, cache_misses, cycles)
 pub fn measure<F, R>(f: F) -> (R, u64, u64)
 where
     F: FnOnce() -> R,
 {
+    // Serialize instructions before capturing start telemetry
+    unsafe { core::arch::asm!("lfence", options(nomem, nostack, preserves_flags)); }
+
     let cycles_start = crate::benchmark::read_tsc();
     let misses_start = read_cache_misses();
 
+    // Compiler barrier: prevent optimization reordering across this boundary
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+
     let result = f();
+
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    // Serialize instructions before capturing end telemetry
+    unsafe { core::arch::asm!("lfence", options(nomem, nostack, preserves_flags)); }
 
     let misses_end = read_cache_misses();
     let cycles_end = crate::benchmark::read_tsc();
