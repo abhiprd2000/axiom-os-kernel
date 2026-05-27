@@ -42,3 +42,9 @@ pub fn constant_time_eq(a: &[u8; 32], b: &[u8; 32]) -> bool {
     }
     result == 0
 }
+
+/// The standard uniform block granularity size in bytes (4KB)
+pub const B_SIZE_4K: usize = 4096;
+
+/// The byte-width constraint for individual leaf identifiers
+pub const TREE_LEAF_WIDTH: usize = 32;
