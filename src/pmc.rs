@@ -56,15 +56,16 @@ unsafe fn rdpmc(counter: u32) -> u64 {
     ((hi as u64) << 32) | lo as u64
 }
 
-/// Initialize PMC0 to count LLC cache misses
+/// Initialize PMC0 to count LLC cache misses safely via Read-Modify-Write
 pub fn init_cache_miss_counter() {
     unsafe {
-        // Program PMC0 to count LLC misses
+        // 1. Read current global control bits to preserve existing configuration
+        let current_ctrl = rdmsr(IA32_PERF_GLOBAL_CTRL);
+
+        // 2. Program PMC0 safely without wiping out other hypervisor/CPU flags
         wrmsr(IA32_PERFEVTSEL0, LLC_MISS_EVENT | PMC_ENABLE);
-        // Reset counter to 0
         wrmsr(IA32_PMC0, 0);
-        // Enable PMC0 in global control
-        wrmsr(IA32_PERF_GLOBAL_CTRL, 1);
+        wrmsr(IA32_PERF_GLOBAL_CTRL, current_ctrl | 1); // Enable PMC0 (bit 0)
     }
 }
 
