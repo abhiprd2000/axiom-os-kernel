@@ -48,3 +48,11 @@ pub const B_SIZE_4K: usize = 4096;
 
 /// The byte-width constraint for individual leaf identifiers
 pub const TREE_LEAF_WIDTH: usize = 32;
+
+pub struct BlockIndex {
+    pub value: u32,
+}
+
+pub fn get_block_offset(idx: BlockIndex) -> usize {
+    (idx.value as usize) * B_SIZE_4K
+}
