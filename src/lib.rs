@@ -13,6 +13,7 @@ use core::panic::PanicInfo;
 pub mod print;
 pub mod vfs;
 pub mod provenance;
+pub mod pmc;
 #[cfg(target_arch = "x86_64")]
 pub mod benchmark;
 pub mod ramdisk;
