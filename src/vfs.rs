@@ -92,3 +92,18 @@ impl VirtualFS {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ValidationState {
+    Pending,
+    Verified,
+    Corrupted,
+}
+
+#[derive(Clone)]
+pub struct CachedVfsBlock {
+    pub block_id: u64,
+    pub data: [u8; 4096],
+    pub lineage_token: u64,
+    pub status: ValidationState,
+}
