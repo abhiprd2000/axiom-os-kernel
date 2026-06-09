@@ -1,5 +1,8 @@
 use core::{future::Future, pin::Pin, task::{Context, Poll}};
 use alloc::boxed::Box;
+use crossbeam_queue::ArrayQueue;
+use conquer_once::spin::OnceCell;
+use crate::vfs::CachedVfsBlock;
 
 pub mod executor;
 pub mod keyboard;
@@ -21,32 +24,32 @@ impl Task {
     }
 }
 
-use crate::vfs::CachedVfsBlock;
-
 #[derive(Clone, Copy)]
 pub struct CryptoVerificationJob {
     pub block_ptr: *mut CachedVfsBlock,
     pub expected_hash: [u8; 32], 
 }
 
-pub struct VerificationQueue {
-    pub jobs: [Option<CryptoVerificationJob>; 32],
-    pub head: usize,
-    pub tail: usize,
+// Global thread-safe async queue for block validation
+pub static VERIFICATION_QUEUE: OnceCell<ArrayQueue<CryptoVerificationJob>> = OnceCell::new();
+
+pub fn init_queue() {
+    VERIFICATION_QUEUE.init_once(|| ArrayQueue::new(32));
 }
 
 pub fn spawn_provenance_worker() {
-    
     loop {
         if let Some(queue) = VERIFICATION_QUEUE.get() {
             if let Some(job) = queue.pop() {
-                // Execute the cryptographic hashing off the main thread path
                 unsafe {
                     crate::provenance::process_next_provenance_job(job);
                 }
             }
         }
-        // Prevent raw CPU hogging in simulation
         core::hint::spin_loop();
     }
+}
+
+pub fn yield_current_thread() {
+    core::hint::spin_loop();
 }
