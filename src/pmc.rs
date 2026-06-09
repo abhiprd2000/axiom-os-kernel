@@ -17,24 +17,26 @@ mod x86_64_impl {
     const PMC_ENABLE: u64 = (1 << 22) | (1 << 17) | (1 << 16);
 
     unsafe fn wrmsr(msr: u32, value: u64) {
-        let lo = value as u32;
-        let hi = (value >> 32) as u32;
+    let lo = (value & 0xFFFFFFFF) as u32;
+    let hi = (value >> 32) as u32;
+    unsafe {
         core::arch::asm!("wrmsr", in("ecx") msr, in("eax") lo, in("edx") hi);
-    }
-
+    }   
+}
     unsafe fn rdmsr(msr: u32) -> u64 {
-        let lo: u32;
-        let hi: u32;
+    let (lo, hi): (u32, u32);
+    unsafe {
         core::arch::asm!("rdmsr", in("ecx") msr, out("eax") lo, out("edx") hi);
-        ((hi as u64) << 32) | lo as u64
     }
-
+    ((hi as u64) << 32) | (lo as u64)
+}
     unsafe fn rdpmc(counter: u32) -> u64 {
-        let lo: u32;
-        let hi: u32;
+    let (lo, hi): (u32, u32);
+    unsafe {
         core::arch::asm!("rdpmc", in("ecx") counter, out("eax") lo, out("edx") hi);
-        ((hi as u64) << 32) | lo as u64
     }
+    ((hi as u64) << 32) | (lo as u64)
+}
 
     pub fn init_cache_miss_counter() {
         unsafe {
