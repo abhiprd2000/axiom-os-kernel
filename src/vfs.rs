@@ -124,3 +124,18 @@ pub fn read_block_async(block: &mut CachedVfsBlock) {
     // In a real execution, the calling thread would now yield control to the scheduler
     crate::task::yield_current_thread(); 
 }
+
+use core::sync::atomic::{AtomicU8, Ordering};
+
+pub const STATE_PENDING: u8 = 0;
+pub const STATE_VERIFIED: u8 = 1;
+pub const STATE_CORRUPTED: u8 = 2;
+
+#[derive(Clone)]
+pub struct CachedVfsBlock {
+    pub block_id: u64,
+    pub data: [u8; 4096],
+    pub lineage_token: u64,
+    // Atomic state ensures memory operations are strictly ordered across cores
+    pub status: core::sync::atomic::AtomicU8, 
+}
