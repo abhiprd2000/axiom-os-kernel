@@ -1,6 +1,6 @@
 use crate::println;
 use core::sync::atomic::Ordering;
-use crate::vfs::{STATE_VERIFIED, STATE_CORRUPTED, CachedVfsBlock};
+use crate::vfs::{STATE_VERIFIED, STATE_CORRUPTED};
 use crate::task::CryptoVerificationJob;
 
 #[derive(Debug, Clone)]

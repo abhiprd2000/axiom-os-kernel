@@ -31,7 +31,16 @@ pub struct CryptoVerificationJob {
 }
 
 // Global thread-safe async queue for block validation
-pub static VERIFICATION_QUEUE: OnceCell<ArrayQueue<CryptoVerificationJob>> = OnceCell::new();
+#[derive(Clone, Copy)]
+pub struct CryptoVerificationJob {
+    pub block_ptr: *mut CachedVfsBlock,
+    pub expected_hash: [u8; 32], 
+}
+
+unsafe impl Send for CryptoVerificationJob {}
+unsafe impl Sync for CryptoVerificationJob {}
+
+pub static VERIFICATION_QUEUE: OnceCell<ArrayQueue<CryptoVerificationJob>> = OnceCell::uninit();
 
 pub fn init_queue() {
     VERIFICATION_QUEUE.init_once(|| ArrayQueue::new(32));

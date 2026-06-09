@@ -96,7 +96,6 @@ pub const STATE_PENDING: u8 = 0;
 pub const STATE_VERIFIED: u8 = 1;
 pub const STATE_CORRUPTED: u8 = 2;
 
-#[derive(Clone)]
 pub struct CachedVfsBlock {
     pub block_id: u64,
     pub data: [u8; 4096],
