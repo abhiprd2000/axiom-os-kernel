@@ -20,3 +20,17 @@ impl Task {
         self.future.as_mut().poll(context)
     }
 }
+
+use crate::vfs::CachedVfsBlock;
+
+#[derive(Clone, Copy)]
+pub struct CryptoVerificationJob {
+    pub block_ptr: *mut CachedVfsBlock,
+    pub expected_hash: [u8; 32], 
+}
+
+pub struct VerificationQueue {
+    pub jobs: [Option<CryptoVerificationJob>; 32],
+    pub head: usize,
+    pub tail: usize,
+}
