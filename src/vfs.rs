@@ -107,3 +107,20 @@ pub struct CachedVfsBlock {
     pub lineage_token: u64,
     pub status: ValidationState,
 }
+
+pub fn read_block_async(block: &mut CachedVfsBlock) {
+    block.status = ValidationState::Pending;
+
+    let job = CryptoVerificationJob {
+        block_ptr: block as *mut CachedVfsBlock,
+        expected_hash: [0u8; 32], // Linked to expected policy metadata
+    };
+
+    // Push to the global queue asynchronously—DO NOT block here
+    if let Some(queue) = crate::task::VERIFICATION_QUEUE.get() {
+        let _ = queue.push(job); // Non-blocking push
+    }
+    
+    // In a real execution, the calling thread would now yield control to the scheduler
+    crate::task::yield_current_thread(); 
+}

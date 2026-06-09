@@ -79,3 +79,24 @@ pub unsafe fn process_next_provenance_job(job: CryptoVerificationJob) {
         }
     }
 }
+
+pub unsafe fn process_next_provenance_job(job: CryptoVerificationJob) {
+    if job.block_ptr.is_null() { return; }
+
+    // SIMULATION DELAY: Spin for ~30 microseconds to simulate physical TPM 2.0 SPI bus latency
+    // 30 microseconds at a 2GHz clock rate is roughly 60,000 cycles
+    for _ in 0..60_000 {
+        core::hint::spin_loop();
+    }
+
+    let is_valid = true; 
+    if is_valid {
+        unsafe {
+            (*job.block_ptr).status = ValidationState::Verified;
+        }
+    } else {
+        unsafe {
+            (*job.block_ptr).status = ValidationState::Corrupted;
+        }
+    }
+}

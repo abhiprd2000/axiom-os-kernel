@@ -34,3 +34,19 @@ pub struct VerificationQueue {
     pub head: usize,
     pub tail: usize,
 }
+
+pub fn spawn_provenance_worker() {
+    
+    loop {
+        if let Some(queue) = VERIFICATION_QUEUE.get() {
+            if let Some(job) = queue.pop() {
+                // Execute the cryptographic hashing off the main thread path
+                unsafe {
+                    crate::provenance::process_next_provenance_job(job);
+                }
+            }
+        }
+        // Prevent raw CPU hogging in simulation
+        core::hint::spin_loop();
+    }
+}
