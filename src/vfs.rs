@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use alloc::string::String;
 use crate::provenance::provenance_hash;
 use crate::println;
+use crate::task::CryptoVerificationJob;
 
 #[derive(Debug, Clone)]
 pub enum FileType {
@@ -39,9 +40,9 @@ impl FileNode {
 
     pub fn verify(&self) -> bool {
         crate::provenance::constant_time_eq(
-    &provenance_hash(&self.data),
-    &self.provenance_hash
-)
+            &provenance_hash(&self.data),
+            &self.provenance_hash
+        )
     }
 }
 
@@ -58,8 +59,6 @@ impl VirtualFS {
         self.files.push(FileNode::new_file(name, data));
     }
 
-    /// Every read automatically verifies provenance
-    /// If hash mismatches, kernel blocks the read
     pub fn read(&self, name: &str) -> Option<&[u8]> {
         let file = self.files.iter().find(|f| f.name == name)?;
         if !file.verify() {
@@ -82,51 +81,17 @@ impl VirtualFS {
         }
     }
 
-    /// Simulate tamper attack on a file
     pub fn tamper(&mut self, name: &str) {
         if let Some(f) = self.files.iter_mut().find(|f| f.name == name) {
             if !f.data.is_empty() {
-                f.data[0] ^= 0xff; // flip first byte
+                f.data[0] ^= 0xff;
                 println!("[ATTACK] \"{}\" tampered with", name);
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ValidationState {
-    Pending,
-    Verified,
-    Corrupted,
-}
-
-#[derive(Clone)]
-pub struct CachedVfsBlock {
-    pub block_id: u64,
-    pub data: [u8; 4096],
-    pub lineage_token: u64,
-    pub status: ValidationState,
-}
-
-pub fn read_block_async(block: &mut CachedVfsBlock) {
-    block.status = ValidationState::Pending;
-
-    let job = CryptoVerificationJob {
-        block_ptr: block as *mut CachedVfsBlock,
-        expected_hash: [0u8; 32], // Linked to expected policy metadata
-    };
-
-    // Push to the global queue asynchronously—DO NOT block here
-    if let Some(queue) = crate::task::VERIFICATION_QUEUE.get() {
-        let _ = queue.push(job); // Non-blocking push
-    }
-    
-    // In a real execution, the calling thread would now yield control to the scheduler
-    crate::task::yield_current_thread(); 
-}
-
-use core::sync::atomic::{AtomicU8, Ordering};
-
+// Atomic State Machine Definitions for Asynchronous Verification
 pub const STATE_PENDING: u8 = 0;
 pub const STATE_VERIFIED: u8 = 1;
 pub const STATE_CORRUPTED: u8 = 2;
@@ -136,6 +101,20 @@ pub struct CachedVfsBlock {
     pub block_id: u64,
     pub data: [u8; 4096],
     pub lineage_token: u64,
-    // Atomic state ensures memory operations are strictly ordered across cores
     pub status: core::sync::atomic::AtomicU8, 
+}
+
+pub fn read_block_async(block: &mut CachedVfsBlock) {
+    block.status.store(STATE_PENDING, core::sync::atomic::Ordering::Relaxed);
+
+    let job = CryptoVerificationJob {
+        block_ptr: block as *mut CachedVfsBlock,
+        expected_hash: [0u8; 32],
+    };
+
+    if let Some(queue) = crate::task::VERIFICATION_QUEUE.get() {
+        let _ = queue.push(job);
+    }
+    
+    crate::task::yield_current_thread(); 
 }
