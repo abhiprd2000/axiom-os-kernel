@@ -29,6 +29,15 @@ impl FileNode {
         }
     }
 
+    pub fn new_file_untrusted(name: &str, data: &[u8]) -> Self {
+        FileNode {
+            name: String::from(name),
+            file_type: FileType::Regular,
+            data: Vec::from(data),
+            provenance_hash: [0u8; 32], // deliberately invalid — always fails verify()
+        }
+    }
+
     pub fn new_dir(name: &str) -> Self {
         FileNode {
             name: String::from(name),
@@ -46,19 +55,23 @@ impl FileNode {
     }
 }
 
-pub struct VirtualFS {
-    pub files: Vec<FileNode>,
-}
-
 impl VirtualFS {
     pub fn new() -> Self {
         VirtualFS { files: Vec::new() }
     }
 
+/// Store a provenance-locked file. Hash computed and bound at write time.
     pub fn create(&mut self, name: &str, data: &[u8]) {
         self.files.push(FileNode::new_file(name, data));
     }
 
+    /// Store an untrusted file with no valid provenance record. The kernel
+    /// blocks all reads — the file exists in the VFS but is unreadable through
+    /// the enforced path. Demonstrates the enforcement boundary.
+    pub fn create_untrusted(&mut self, name: &str, data: &[u8]) {
+        self.files.push(FileNode::new_file_untrusted(name, data));
+    }
+    
     pub fn read(&self, name: &str) -> Option<&[u8]> {
         let file = self.files.iter().find(|f| f.name == name)?;
         if !file.verify() {

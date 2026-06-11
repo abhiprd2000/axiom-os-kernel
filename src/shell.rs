@@ -450,8 +450,9 @@ pub fn interpret_command(command: &str) {
         "echo" => {
             println!("{}", arg);
         }
-        "write" => {
-            // Usage: write <name> <content>
+"write" => {
+            // Stores data with a zeroed provenance record. The kernel blocks
+            // every read of this file — use `trust` for readable files.
             let sub: Vec<&str> = arg.splitn(2, ' ').collect();
             if sub.len() < 2 {
                 println!("[error] usage: write <name> <content>");
@@ -460,11 +461,14 @@ pub fn interpret_command(command: &str) {
             let name    = sub[0].trim();
             let content = sub[1].trim().as_bytes();
             let mut vfs = VFS.lock();
-            vfs.create(name, content);
-            println!("[vfs] written: {} ({} bytes) [no provenance]", name, content.len());
-            println!("[hint] use trust to write with provenance enforcement");
+            vfs.create_untrusted(name, content);
+            vga_buffer::println_colored(
+                &alloc::format!("[vfs] written: {} ({} bytes) — NO provenance record", name, content.len()),
+                Color::Yellow, Color::Black,
+            );
+            println!("[kernel] reads of '{}' will be blocked — use 'trust' for readable files", name);
         }
-        "cat" => {
+                "cat" => {
             if arg.is_empty() {
                 println!("[error] usage: cat <filename>");
                 return;
