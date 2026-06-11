@@ -400,32 +400,29 @@ pub fn interpret_command(command: &str) {
                 println!("[error] usage: run <script.mtr>");
                 return;
             }
-            // Load from FAT32
+// read_file verifies provenance atomically under a single lock
+            // acquisition before returning data. Returning Some(data) is proof
+            // the hash matched — no second verify_file call needed. A separate
+            // call would re-acquire the lock after data is already in hand,
+            // creating a TOCTOU gap between the check and the data we hold.
             let script = FAT32.lock().read_file(arg);
             match script {
                 None => {
-                    println!("[error] script not found: {}", arg);
+                    // read_file already printed READ BLOCKED on hash failure.
+                    vga_buffer::println_colored(
+                        &alloc::format!("[AXIOM KERNEL] SCRIPT BLOCKED: {} — provenance failed or not found", arg),
+                        Color::LightRed, Color::Black,
+                    );
                     return;
                 }
                 Some(data) => {
-                    // Verify provenance before execution
-                    let verified = FAT32.lock().verify_file(arg);
-                    match verified {
-                        Some(false) => {
-                            vga_buffer::println_colored(&alloc::format!("[AXIOM KERNEL] SCRIPT BLOCKED: {}", arg), Color::LightRed, Color::Black);
-                            vga_buffer::println_colored("[AXIOM KERNEL] Provenance violation - tampered script refused", Color::LightRed, Color::Black);
-                            return;
-                        }
-                        None => {
-                            println!("[error] could not verify: {}", arg);
-                            return;
-                        }
-                        Some(true) => {
-                            vga_buffer::println_colored(&alloc::format!("[AXIOM KERNEL] SCRIPT VERIFIED: {}", arg), Color::LightGreen, Color::Black);
-                            println!("[mitra] loading {} ({} bytes)", arg, data.len());
-                        }
-                    }
-                    // Parse and execute
+                    // Some(data) is only reachable if BLAKE3 hash matched the
+                    // stored provenance record inside that same lock scope.
+                    vga_buffer::println_colored(
+                        &alloc::format!("[AXIOM KERNEL] SCRIPT VERIFIED: {}", arg),
+                        Color::LightGreen, Color::Black,
+                    );
+                    println!("[mitra] loading {} ({} bytes)", arg, data.len());                    // Parse and execute
                     let src = match core::str::from_utf8(&data) {
                         Ok(s) => s,
                         Err(_) => {
