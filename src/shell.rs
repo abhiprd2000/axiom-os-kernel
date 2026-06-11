@@ -54,36 +54,39 @@ pub fn interpret_command(command: &str) {
             println!("  help                - show this menu");
             println!("  clear               - clear screen");
             println!("  info                - system info");
+            println!("  sysinfo             - full system information");
+            println!("  --- VFS (in-memory, provenance-enforced) ---");
             println!("  ls                  - list VFS files");
-            println!("  trust <name> <data> - store trusted file");
-            println!("  verify <name>       - verify provenance");
-            println!("  tamper <name>       - simulate attack");
-            println!("  diskwrite <n> <d>   - write to FAT32 disk");
+            println!("  trust <name> <data> - store file with BLAKE3 provenance (readable)");
+            println!("  write <name> <data> - store file WITHOUT provenance (reads blocked)");
+            println!("  cat <name>          - read file through provenance-enforced path");
+            println!("  verify <name>       - explicitly verify provenance of VFS file");
+            println!("  tamper <name>       - simulate in-memory attack on VFS file");
+            println!("  edit <filename>     - open text editor");
+            println!("  save <name>         - save VFS file to persistent ATA disk");
+            println!("  load <name>         - load file from ATA disk into VFS");
+            println!("  --- FAT32 (persistent, provenance-enforced) ---");
+            println!("  diskwrite <n> <d>   - write to FAT32 disk with BLAKE3 provenance");
             println!("  diskread <name>     - read from FAT32 disk");
             println!("  diskls              - list FAT32 files");
-            println!("  disktamper <name>   - simulate disk attack");
-            println!("  axiom               - about");
+            println!("  diskverify <name>   - verify FAT32 file provenance");
+            println!("  disktamper <name>   - simulate disk tampering attack");
+            println!("  run <script.mtr>    - run Mitra script from FAT32 disk");
+            println!("  --- Mitra DSL ---");
+            println!("  mitra <code>        - execute Mitra provenance-typed language");
+            println!("  --- Processes ---");
             println!("  ps                  - list processes");
             println!("  kill <pid>          - terminate process");
             println!("  spawn <pid>         - spawn new process");
+            println!("  --- Utilities ---");
             println!("  hash <text>         - compute BLAKE3 hash");
-            println!("  bench               - run benchmarks");
-            println!("  mitra <code>        - execute Mitra language");
-            println!("  sysinfo             - full system information");
-            println!("  edit <filename>     - open text editor");
-            println!("  save <name>         - save VFS file to persistent disk");
-            println!("  load <name>         - load file from persistent disk to VFS");
-            println!("  edit <filename>     - open text editor");
-            println!("  save <name>         - save VFS file to persistent disk");
-            println!("  load <name>         - load file from persistent disk to VFS");
-            println!("  run <script.mtr>    - run Mitra script from FAT32 disk");
+            println!("  bench               - run performance benchmarks");
             println!("  echo <text>         - print text");
-            println!("  write <name> <data>  - write file without provenance");
-            println!("  cat <name>          - read file (VFS or FAT32)");
             println!("  history             - show last 10 commands");
             println!("  !!                  - re-run last command");
             println!("  !n <n>              - re-run command #n");
-        }
+            println!("  axiom               - about");
+                }
         "clear" => { vga_buffer::clear_screen(); }
         "info" => {
             println!("Axiom OS v0.2.0-alpha | Arch: x86_64 + aarch64 | Bare Metal");
