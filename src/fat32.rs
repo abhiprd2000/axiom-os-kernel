@@ -99,13 +99,42 @@ impl Fat32 {
         None
     }
 
-    pub fn write_file(&mut self, name: &str, data: &[u8]) {
+    fn alloc_cluster(&mut self) -> Option<u32> {
         let fs = RSVD as usize;
         let mut fat = [0u8; SECTOR_SIZE];
         self.disk.read_sector(fs, &mut fat);
-        let clu: u32 = 3;
-        fat[12..16].copy_from_slice(&EOC.to_le_bytes());
-        self.disk.write_sector(fs, &fat);
+        let max_entries = SECTOR_SIZE / 4;
+        for i in 3..max_entries {
+            let off = i * 4;
+            let entry = u32::from_le_bytes([fat[off], fat[off+1], fat[off+2], fat[off+3]]);
+            if entry == 0x00000000 {
+                return Some(i as u32);
+            }
+        }
+        None
+    }
+
+    fn fat_set_eoc(&mut self, clu: u32) {
+        let off = (clu as usize) * 4;
+        let eoc = EOC.to_le_bytes();
+        for fat_idx in 0..NFATS as usize {
+            let fat_sector = RSVD as usize + fat_idx * FAT_SZ as usize;
+            let mut fat = [0u8; SECTOR_SIZE];
+            self.disk.read_sector(fat_sector, &mut fat);
+            fat[off..off+4].copy_from_slice(&eoc);
+            self.disk.write_sector(fat_sector, &fat);
+        }
+    }
+
+    pub fn write_file(&mut self, name: &str, data: &[u8]) {
+        let clu = match self.alloc_cluster() {
+            Some(c) => c,
+            None => {
+                println!("[fat32] error: disk full — no free clusters");
+                return;
+            }
+        };
+        self.fat_set_eoc(clu);
 
         let mut buf = [0u8; SECTOR_SIZE];
         let wl = data.len().min(SECTOR_SIZE);
@@ -115,6 +144,18 @@ impl Fat32 {
         let rs = self.clu2sec(ROOT_CLU);
         let mut dir = [0u8; SECTOR_SIZE];
         self.disk.read_sector(rs, &mut dir);
+        let slot = (0..16usize).find(|&i| {
+            let b = dir[i * 32];
+            b == 0x00 || b == 0xE5
+        });
+        let slot = match slot {
+            Some(s) => s,
+            None => {
+                println!("[fat32] error: root directory full (max 16 entries)");
+                return;
+            }
+        };
+        let dir_off = slot * 32;
 
         let mut e = [0u8; 32];
         let (base, ext) = match name.find('.') {
@@ -142,10 +183,11 @@ impl Fat32 {
         let hash = blake3::hash(data);
         let full: [u8; 32] = *hash.as_bytes();
         e[12..20].copy_from_slice(&full[..8]);
-        dir[..32].copy_from_slice(&e);
+        dir[dir_off..dir_off+32].copy_from_slice(&e);
         self.disk.write_sector(rs, &dir);
+
         self.hstore_write(name, &full);
-        println!("[fat32] wrote: {} ({} bytes)", name, data.len());
+        println!("[fat32] wrote: {} ({} bytes) cluster={}", name, data.len(), clu);
     }
 
     pub fn read_file(&mut self, name: &str) -> Option<Vec<u8>> {
