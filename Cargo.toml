@@ -1,6 +1,6 @@
 [package]
 name = "axiom_os"
-version = "0.2.0-alpha"
+version = "0.3.0-alpha"
 edition = "2024"
 description = "Axiom OS - bare-metal kernel with BLAKE3 provenance enforcement on every read"
 license = "MIT"

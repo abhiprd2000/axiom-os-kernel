@@ -8,7 +8,7 @@ use uart::{uart_puts, uart_put_u64};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main_arm() -> ! {
-    uart_puts("\n  AXIOM OS v0.2.0-alpha - aarch64\n\n");
+    uart_puts("\n  AXIOM OS v0.3.0-alpha - aarch64\n\n");
 
     let sp: u64;
     unsafe { core::arch::asm!("mov {}, sp", out(reg) sp); }

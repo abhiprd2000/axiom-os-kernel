@@ -1,4 +1,4 @@
-This repository reflects the v0.2.0-alpha research prototype described in the submitted manuscript.
+This repository reflects the v0.3.0-alpha research prototype described in the submitted manuscript.
 
 # Axiom OS
 
@@ -22,7 +22,7 @@ read.
 - **Target:** x86_64 (primary) + ARM64 (QEMU virt)
 - **Language:** Rust (no_std, no libc)
 - **Lines:** ~3,200
-- **Release:** v0.2.0-alpha
+- **Release:** v0.3.0-alpha
 
 **Kernel subsystems:**
 GDT/IDT, 8MB linked-list heap, priority scheduler, 
