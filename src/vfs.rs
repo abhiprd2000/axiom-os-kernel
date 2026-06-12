@@ -55,6 +55,10 @@ impl FileNode {
     }
 }
 
+pub struct VirtualFS {
+    pub files: Vec<FileNode>,
+}
+
 impl VirtualFS {
     pub fn new() -> Self {
         VirtualFS { files: Vec::new() }
