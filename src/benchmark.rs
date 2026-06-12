@@ -9,7 +9,7 @@ impl Benchmark {
         Benchmark { name, iterations: 0, total_cycles: 0 }
     }
 
-    pub fn run(&mut self, iterations: u64, f: fn()) {
+    pub fn run<F: FnMut()>(&mut self, iterations: u64, mut f: F) {
         self.iterations = iterations;
         let start = read_tsc();
         for _ in 0..iterations {

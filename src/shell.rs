@@ -271,19 +271,90 @@ pub fn interpret_command(command: &str) {
         }
         "bench" => {
             use crate::benchmark::Benchmark;
-            println!("=== Axiom OS Benchmarks ===");
-            let mut b = Benchmark::new("blake3_hash");
-            b.run(1000, || { blake3::hash(b"kernel provenance benchmark payload"); });
-            b.report();
-            let mut b2 = Benchmark::new("vfs_read");
-            b2.run(100, || {
-                let mut v = crate::vfs::VirtualFS::new();
-                v.create("t", b"test data");
-                v.read("t");
-            });
-            b2.report();
-            println!("[bench] CPU cycles are real hardware measurements");
+            use crate::provenance::{provenance_hash, constant_time_eq};
+            use core::hint::black_box;
+
+            println!("=== Axiom OS Benchmark Suite ===");
+            println!("[bench] all cycle counts are RDTSC hardware measurements");
+            println!("[bench] black_box used throughout to prevent dead-code elimination");
+            println!("");
+
+            println!("--- BLAKE3 hash throughput ---");
+            {
+                let payload = alloc::vec![0xABu8; 64];
+                let slice = &payload[..];
+                let mut b = Benchmark::new("blake3_hash_64B");
+                b.run(2000, || {
+                    let h = blake3::hash(black_box(slice));
+                    let _ = black_box(h);
+                });
+                b.report();
+            }
+            {
+                let payload = alloc::vec![0xABu8; 512];
+                let slice = &payload[..];
+                let mut b = Benchmark::new("blake3_hash_512B");
+                b.run(1000, || {
+                    let h = blake3::hash(black_box(slice));
+                    let _ = black_box(h);
+                });
+                b.report();
+            }
+            {
+                let payload = alloc::vec![0xABu8; 4096];
+                let slice = &payload[..];
+                let mut b = Benchmark::new("blake3_hash_4096B");
+                b.run(200, || {
+                    let h = blake3::hash(black_box(slice));
+                    let _ = black_box(h);
+                });
+                b.report();
+            }
+            println!("");
+
+            println!("--- VFS in-memory read+verify ---");
+            {
+                let mut b = Benchmark::new("vfs_read_verify");
+                b.run(100, || {
+                    let mut v = crate::vfs::VirtualFS::new();
+                    v.create("t", b"test data");
+                    let r = v.read("t");
+                    let _ = black_box(r);
+                });
+                b.report();
+            }
+            println!("");
+
+            println!("--- FAT32 persistent read+verify (provenance-enforced path) ---");
+            {
+                let payload = alloc::vec![0xCDu8; 512];
+                FAT32.lock().write_file("bench.dat", &payload);
+                let mut b = Benchmark::new("fat32_read_verify_512B");
+                b.run(50, || {
+                    let r = FAT32.lock().read_file("bench.dat");
+                    let _ = black_box(r);
+                });
+                b.report();
+            }
+            println!("");
+
+            println!("--- Verification overhead (hash + constant-time compare) ---");
+            {
+                let payload = alloc::vec![0xEFu8; 4096];
+                let slice = &payload[..];
+                let expected = provenance_hash(slice);
+                let mut b = Benchmark::new("verify_overhead_4096B");
+                b.run(200, || {
+                    let h = provenance_hash(black_box(slice));
+                    let ok = constant_time_eq(black_box(&h), black_box(&expected));
+                    let _ = black_box(ok);
+                });
+                b.report();
+            }
+            println!("");
+            println!("[bench] done — run 5 cold boots and record all values");
         }
+        
         "mitra" => {
             if arg.is_empty() {
                 println!("[error] usage: mitra <code>");
