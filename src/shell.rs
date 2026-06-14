@@ -272,11 +272,14 @@ pub fn interpret_command(command: &str) {
         "bench" => {
             use crate::benchmark::Benchmark;
             use crate::provenance::{provenance_hash, constant_time_eq};
+            use crate::pmc;
             use core::hint::black_box;
 
             println!("=== Axiom OS Benchmark Suite ===");
-            println!("[bench] all cycle counts are RDTSC hardware measurements");
-            println!("[bench] black_box used throughout to prevent dead-code elimination");
+            println!("[bench] RDTSC cycle counts; black_box throughout to block dead-code elimination");
+            println!("[bench] LLC-miss counts are valid ONLY under KVM (-cpu host,pmu=on) or bare metal;");
+            println!("[bench] under pure QEMU/TCG they are meaningless and should not be reported.");
+            pmc::init_cache_miss_counter();
             println!("");
 
             println!("--- BLAKE3 hash throughput ---");
@@ -312,21 +315,76 @@ pub fn interpret_command(command: &str) {
             }
             println!("");
 
-            println!("--- VFS in-memory read+verify ---");
+            println!("--- read+verify: whole-file vs block-level (proportional access) ---");
+            println!("[bench] setup (alloc + insert) is OUTSIDE the timed loop; only read+verify is timed");
             {
-                let mut b = Benchmark::new("vfs_read_verify");
-                b.run(100, || {
+                let sizes: [usize; 6] = [4096, 16384, 65536, 262144, 1048576, 4194304];
+                for &sz in sizes.iter() {
+                    // --- setup once, OUTSIDE the timed region ---
                     let mut v = crate::vfs::VirtualFS::new();
-                    v.create("t", b"test data");
-                    let r = v.read("t");
-                    let _ = black_box(r);
-                });
-                b.report();
+                    let payload = alloc::vec![0xABu8; sz];
+                    v.create("bench", &payload);
+                    let nblocks = (sz + crate::vfs::BLOCK_SIZE - 1) / crate::vfs::BLOCK_SIZE;
+
+                    // baseline: rehash the WHOLE file each read
+                    let mut bw = Benchmark::new("wholefile_verify");
+                    bw.run(100, || {
+                        let r = v.read(black_box("bench"));
+                        let _ = black_box(r);
+                    });
+
+                    // block-level: verify ONLY the one 4 KiB block read
+                    let mut bb = Benchmark::new("block_verify_one_4k");
+                    bb.run(100, || {
+                        let r = v.read_range(black_box("bench"), 0, 4096);
+                        let _ = black_box(r);
+                    });
+
+                    // single-shot cycles + LLC misses for each path (KVM/bare-metal only)
+                    let (_, wmiss, wcyc) = pmc::measure(|| { let r = v.read(black_box("bench")); black_box(r); });
+                    let (_, bmiss, bcyc) = pmc::measure(|| { let r = v.read_range(black_box("bench"), 0, 4096); black_box(r); });
+
+                    println!("[size={} bytes, {} blocks]", sz, nblocks);
+                    bw.report();
+                    bb.report();
+                    println!("[pmc] wholefile: {} cyc, {} LLC-miss  |  block: {} cyc, {} LLC-miss",
+                        wcyc, wmiss, bcyc, bmiss);
+                }
+                println!("[bench] expected shape: wholefile grows ~linearly with size; block stays ~flat");
             }
             println!("");
 
-            println!("--- FAT32 persistent read+verify (provenance-enforced path) ---");
+            println!("--- write path: one block write (+ lazy Merkle root) vs full-file rehash ---");
             {
+                let sz = 1_048_576usize; // 1 MiB = 256 blocks
+                let mut v = crate::vfs::VirtualFS::new();
+                let payload = alloc::vec![0xABu8; sz];
+                v.create("w", &payload);
+                let patch = alloc::vec![0x5Au8; crate::vfs::BLOCK_SIZE];
+
+                // cheap path: update one leaf + recompute the root lazily from leaves
+                let mut bwrite = Benchmark::new("block_write_plus_lazy_root_1MiB");
+                bwrite.run(100, || {
+                    let _ = v.write_block(black_box("w"), 0, black_box(&patch));
+                    let _ = black_box(v.merkle_root(black_box("w")));
+                });
+                bwrite.report();
+
+                // baseline: what a full-file rehash on every write would cost
+                let slice = &payload[..];
+                let mut brehash = Benchmark::new("fullfile_rehash_1MiB");
+                brehash.run(100, || {
+                    let h = provenance_hash(black_box(slice));
+                    let _ = black_box(h);
+                });
+                brehash.report();
+                println!("[bench] note: root recompute is from-leaves (O(blocks)), still far below O(filesize) rehash");
+            }
+            println!("");
+
+            println!("--- FAT32 persistent read+verify (skipped by default — it WRITES to disk) ---");
+            println!("[bench] run 'bench disk' to include it, and ONLY against a throwaway disk image");
+            if arg.trim() == "disk" {
                 let payload = alloc::vec![0xCDu8; 512];
                 FAT32.lock().write_file("bench.dat", &payload);
                 let mut b = Benchmark::new("fat32_read_verify_512B");
@@ -335,6 +393,8 @@ pub fn interpret_command(command: &str) {
                     let _ = black_box(r);
                 });
                 b.report();
+            } else {
+                println!("[bench] FAT32 path skipped (no disk writes performed)");
             }
             println!("");
 
