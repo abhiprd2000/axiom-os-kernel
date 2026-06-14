@@ -99,4 +99,107 @@ async fn keyboard_task() {
                     if let Some(ref mut editor) = *ea {
                         let quit = match key {
                             DecodedKey::Unicode(c) => editor.handle_char(c),
-                            DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp)   => { editor.handle_char('
+                            DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp)   => { editor.handle_char('\0'); false }
+                            _ => false,
+                        };
+                        if quit {
+                            *ea = None;
+                            axiom_os::vga_buffer::clear_screen();
+                            axiom_os::println!("AXIOM OS v0.3.0-alpha");
+                            axiom_os::print!("> ");
+                        }
+                        continue;
+                    }
+                }
+                match key {
+                    DecodedKey::Unicode('\n') | DecodedKey::Unicode('\r') => {
+                        axiom_os::println!();
+                        axiom_os::shell::interpret_command(&input_buf);
+                        input_buf.clear();
+                        hist_cursor = 0;
+                        axiom_os::print!("> ");
+                    }
+                    DecodedKey::Unicode('\x08') => {
+                        if !input_buf.is_empty() {
+                            input_buf.pop();
+                            axiom_os::vga_buffer::WRITER.lock().backspace();
+                        }
+                    }
+                    DecodedKey::Unicode('\t') => {
+                        let commands = [
+                            "trust", "verify", "tamper", "cat", "ls", "write", "echo",
+                            "diskwrite", "diskread", "diskls", "diskverify", "disktamper",
+                            "ps", "kill", "spawn", "hash", "bench", "mitra", "run",
+                            "sysinfo", "history", "help", "clear", "info", "axiom",
+                        ];
+                        let matches: alloc::vec::Vec<&str> = commands.iter()
+                            .filter(|c| c.starts_with(input_buf.as_str()))
+                            .copied()
+                            .collect();
+                        if matches.len() == 1 {
+                            let completed = matches[0];
+                            for _ in 0..input_buf.len() {
+                                axiom_os::vga_buffer::WRITER.lock().backspace();
+                            }
+                            input_buf = alloc::string::String::from(completed);
+                            axiom_os::print!("{}", completed);
+                        } else if matches.len() > 1 {
+                            axiom_os::println!();
+                            for m in &matches { axiom_os::print!("  {}", m); }
+                            axiom_os::println!();
+                            axiom_os::print!("> {}", input_buf);
+                        }
+                    }
+                    DecodedKey::Unicode(c) => {
+                        input_buf.push(c);
+                        axiom_os::print!("{}", c);
+                    }
+                    DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp) => {
+                        let hist = axiom_os::shell::HISTORY.lock();
+                        let len  = *axiom_os::shell::HIST_LEN.lock();
+                        let pos  = *axiom_os::shell::HIST_POS.lock();
+                        if len == 0 { continue; }
+                        if hist_cursor < len { hist_cursor += 1; }
+                        let idx = (pos + 10 - hist_cursor) % 10;
+                        let entry = hist[idx].clone();
+                        drop(hist);
+                        // Clear current line
+                        for _ in 0..input_buf.len() {
+                            axiom_os::vga_buffer::WRITER.lock().backspace();
+                        }
+                        input_buf = entry.clone();
+                        axiom_os::print!("{}", entry);
+                    }
+                    DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowDown) => {
+                        let hist = axiom_os::shell::HISTORY.lock();
+                        let pos  = *axiom_os::shell::HIST_POS.lock();
+                        // Clear current line
+                        for _ in 0..input_buf.len() {
+                            axiom_os::vga_buffer::WRITER.lock().backspace();
+                        }
+                        if hist_cursor > 1 {
+                            hist_cursor -= 1;
+                            let idx = (pos + 10 - hist_cursor) % 10;
+                            let entry = hist[idx].clone();
+                            drop(hist);
+                            input_buf = entry.clone();
+                            axiom_os::print!("{}", entry);
+                        } else {
+                            hist_cursor = 0;
+                            drop(hist);
+                            input_buf.clear();
+                        }
+                    }
+
+                    DecodedKey::RawKey(_) => {}
+                }
+            }
+        }
+    }
+}
+
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    loop {}
+}
