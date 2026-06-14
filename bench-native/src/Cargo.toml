@@ -1,0 +1,14 @@
+cat > Cargo.toml << 'EOF'
+[package]
+name = "axiom-bench-native"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+blake3 = "1.8.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+EOF
