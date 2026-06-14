@@ -275,11 +275,20 @@ pub fn interpret_command(command: &str) {
             use crate::pmc;
             use core::hint::black_box;
 
+            // 'bench'      -> RDTSC only (safe under plain QEMU/TCG)
+            // 'bench pmc'  -> also read LLC misses (ONLY under KVM -cpu host,pmu=on / bare metal)
+            // 'bench disk' -> also run the FAT32 path (writes to disk)
+            let want_pmc  = arg.contains("pmc");
+            let want_disk = arg.contains("disk");
+
             println!("=== Axiom OS Benchmark Suite ===");
             println!("[bench] RDTSC cycle counts; black_box throughout to block dead-code elimination");
-            println!("[bench] LLC-miss counts are valid ONLY under KVM (-cpu host,pmu=on) or bare metal;");
-            println!("[bench] under pure QEMU/TCG they are meaningless and should not be reported.");
-            pmc::init_cache_miss_counter();
+            if want_pmc {
+                println!("[bench] PMC on: LLC-miss counts valid ONLY under KVM (-cpu host,pmu=on)/bare metal");
+                pmc::init_cache_miss_counter();
+            } else {
+                println!("[bench] PMC off (rdpmc faults under plain QEMU); run 'bench pmc' under KVM for misses");
+            }
             println!("");
 
             println!("--- BLAKE3 hash throughput ---");
@@ -318,7 +327,7 @@ pub fn interpret_command(command: &str) {
             println!("--- read+verify: whole-file vs block-level (proportional access) ---");
             println!("[bench] setup (alloc + insert) is OUTSIDE the timed loop; only read+verify is timed");
             {
-                let sizes: [usize; 6] = [4096, 16384, 65536, 262144, 1048576, 4194304];
+                let sizes: [usize; 5] = [4096, 16384, 65536, 262144, 1048576];
                 for &sz in sizes.iter() {
                     // --- setup once, OUTSIDE the timed region ---
                     let mut v = crate::vfs::VirtualFS::new();
@@ -340,15 +349,17 @@ pub fn interpret_command(command: &str) {
                         let _ = black_box(r);
                     });
 
-                    // single-shot cycles + LLC misses for each path (KVM/bare-metal only)
-                    let (_, wmiss, wcyc) = pmc::measure(|| { let r = v.read(black_box("bench")); black_box(r); });
-                    let (_, bmiss, bcyc) = pmc::measure(|| { let r = v.read_range(black_box("bench"), 0, 4096); black_box(r); });
-
                     println!("[size={} bytes, {} blocks]", sz, nblocks);
                     bw.report();
                     bb.report();
-                    println!("[pmc] wholefile: {} cyc, {} LLC-miss  |  block: {} cyc, {} LLC-miss",
-                        wcyc, wmiss, bcyc, bmiss);
+
+                    // cycles + LLC misses per path — only when explicitly asked (KVM/bare-metal)
+                    if want_pmc {
+                        let (_, wmiss, wcyc) = pmc::measure(|| { let r = v.read(black_box("bench")); black_box(r); });
+                        let (_, bmiss, bcyc) = pmc::measure(|| { let r = v.read_range(black_box("bench"), 0, 4096); black_box(r); });
+                        println!("[pmc] wholefile: {} cyc, {} LLC-miss  |  block: {} cyc, {} LLC-miss",
+                            wcyc, wmiss, bcyc, bmiss);
+                    }
                 }
                 println!("[bench] expected shape: wholefile grows ~linearly with size; block stays ~flat");
             }
@@ -384,7 +395,7 @@ pub fn interpret_command(command: &str) {
 
             println!("--- FAT32 persistent read+verify (skipped by default — it WRITES to disk) ---");
             println!("[bench] run 'bench disk' to include it, and ONLY against a throwaway disk image");
-            if arg.trim() == "disk" {
+            if want_disk {
                 let payload = alloc::vec![0xCDu8; 512];
                 FAT32.lock().write_file("bench.dat", &payload);
                 let mut b = Benchmark::new("fat32_read_verify_512B");
