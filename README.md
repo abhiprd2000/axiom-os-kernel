@@ -1,38 +1,51 @@
-This repository reflects the v0.3.0-alpha research prototype described in the submitted manuscript.
+This repository reflects the v0.3.0-alpha research prototype described in the submitted manuscript
+*"Proportional-Cost Per-Read Provenance: Making Continuous File Integrity Verification Affordable on Edge Hardware."*
 
 # Axiom OS
 
-A bare-metal OS kernel in Rust enforcing BLAKE3 cryptographic 
-provenance on every file read — not just at load time.
+A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance on **every read** —
+not just at load time — and makes that affordable by verifying only the file blocks a read actually touches.
 
 ## Core Contribution
 
-Every `read()` call unconditionally recomputes the BLAKE3 hash 
-and compares it against the stored provenance record before 
-returning data. There is no API to bypass this check. The 
-verification IS the read path.
+Most integrity mechanisms verify once: at boot, at open, or when a page is first read from storage
+(e.g. fs-verity, dm-verity, IMA). After that, the cached in-memory copy is trusted. Axiom re-verifies
+the in-memory data on **every** read, so tampering that happens *after* the initial check (a memory bug,
+DMA, a row-hammer flip) is caught on the next read.
 
-This differs architecturally from Linux IMA, which verifies 
-at file open/exec time only. A file modified in memory after 
-load is invisible to IMA but blocked by Axiom OS on the next 
-read.
+The naive way to do this — re-hash the whole file on every read — costs O(file size) per read and is
+impractical on small devices. Axiom instead uses **block-level provenance**:
+
+- A file is split into fixed 4 KiB blocks; each block has its own stored BLAKE3 leaf hash.
+- A ranged read `read_range(offset, len)` maps to the blocks it overlaps and re-hashes **only those blocks**,
+  comparing each against its stored leaf in constant time. Per-read cost becomes O(bytes read), not O(file size).
+- A **lazy Merkle root** over the block leaves gives a single 32-byte commitment to the file; a single-block
+  write updates one leaf and defers the root recomputation, so writes cost one block hash instead of a full rehash.
+
+This is the affordability result: per-read verification cost stays flat regardless of file size (see Results).
+
+## How it differs from fs-verity / IMA
+
+fs-verity and IMA bind verification to the storage-access path — a page is checked when read from the device,
+then trusted in the page cache. They do not re-verify the cached copy on subsequent reads. Axiom's check *is*
+the read path, on every read, against per-block hashes. See Table II of the paper for the full comparison.
 
 ## Architecture
 
-- **Target:** x86_64 (primary) + ARM64 (QEMU virt)
-- **Language:** Rust (no_std, no libc)
-- **Lines:** ~3,200
-- **Release:** v0.3.0-alpha
+- **Target:** x86_64 (primary) + ARM64 (QEMU `virt`)
+- **Language:** Rust (`no_std`, no libc)
+- **Source:** ~3,600 lines across 36 files
+- **Release:** v0.3.0-alpha (research prototype)
 
-**Kernel subsystems:**
-GDT/IDT, 8MB linked-list heap, priority scheduler, 
-per-process page tables (CR3 isolation), IPC message queues, 
-ATA PIO driver, syscall interface (INT 0x80), 28-command shell
+**Kernel subsystems:** GDT/IDT, 8 MB linked-list heap, priority scheduler, per-process page tables
+(CR3 isolation), IPC message queues, ATA PIO driver, syscall interface (INT 0x80), interactive shell.
 
 **Provenance layer:**
-- VFS: per-read BLAKE3 verify, constant_time_eq comparison
-- FAT32: 32-byte hash store at sector 1, full 256-bit comparison
-- Mitra DSL: `trusted_data` type routes through kernel read path
+- `vfs.rs` — per-block BLAKE3 leaves, `read_range`/`verify_range` (verify only touched blocks),
+  `write_block` + lazy `merkle_root`, `constant_time_eq` comparison.
+- `provenance.rs` — `provenance_hash` (BLAKE3) and constant-time comparison primitive.
+- `fat32.rs` — on-disk hash store for the persistent path.
+- `mitra/` — small DSL whose `trusted_data` type routes through the verified read path.
 
 ## Quick Start
 
@@ -43,66 +56,80 @@ rustup target add aarch64-unknown-none
 cargo install bootimage
 sudo apt install qemu-system-x86 qemu-system-arm nasm
 
-# Boot x86_64
+# Boot x86_64 (use the bin target; plain `cargo build` also tries the ARM bin)
 cargo run --bin axiom_os
 
 # Boot ARM64
 ./run_arm.sh
 ```
 
-## Tamper Detection Demo
+## Tamper-Detection Demo
 
-trust secret hello world
+Inside the booted shell:
 
-cat secret          # returns: hello world
+```
+trust secret hello world     # store a file + its provenance
+cat secret                   # -> hello world
+tamper secret                # flip a byte in memory
+cat secret                   # -> READ BLOCKED: provenance violation
+```
 
-tamper secret       # flips byte in memory
+## Results
 
-cat secret          # READ BLOCKED: provenance violation
+The headline result is **proportional access**: block-level verification cost is constant (~3.6 µs)
+across file sizes, while whole-file verification grows with size. Numbers below are **median wall-clock
+times on real hardware** (a commodity x86-64 laptop and a mobile-class ARM64 core), produced by the
+standalone `bench-native` harness:
 
-## Benchmarks
+| File size | Blocks | x86-64 whole (ms) | x86-64 block (ms) | ARM64 whole (ms) | ARM64 block (ms) |
+|---|---|---|---|---|---|
+| 4 KiB   | 1    | 0.0040 | 0.0037 | 0.0037 | 0.0037 |
+| 16 KiB  | 4    | 0.0097 | 0.0033 | 0.0143 | 0.0037 |
+| 64 KiB  | 16   | 0.046  | 0.0035 | 0.057  | 0.0037 |
+| 256 KiB | 64   | 0.159  | 0.0037 | 0.230  | 0.0037 |
+| 1 MiB   | 256  | 0.580  | 0.0035 | 0.923  | 0.0037 |
+| 4 MiB   | 1024 | 2.51   | 0.0039 | 3.74   | 0.0037 |
 
-RDTSC bare-metal x86_64, 5 independent cold-boot runs:
+Block-level verification is >640× cheaper (x86-64) and >1000× cheaper (ARM64) than whole-file at 4 MiB.
 
-| Operation | Mean cycles/op | CV | Latency @3GHz |
-|---|---|---|---|
-| BLAKE3 hash | 424,013 | 2.9% | 0.141ms |
-| VFS read+verify | 2,153,973 | 3.0% | 0.718ms |
+Reproduce the real-hardware numbers:
 
-BLAKE3 constitutes 19.7% of total read+verify overhead.
+```bash
+cd bench-native
+cargo run --release        # prints the whole-file vs block table for this CPU
+```
 
-## Mitra DSL
+Reproduce the in-kernel proportional ratio under emulation:
 
-Domain-specific language with kernel-enforced provenance:
+```
+bench                       # in the booted shell; RDTSC, proportional-access size sweep
+```
 
-trusted_data secret = classified report
+**Note on QEMU:** in-kernel cycle counts are emulated and are used only to confirm the *ratio*
+(block-flat vs whole-file-growing). All absolute millisecond figures above come from real hardware,
+not emulation.
 
-verify secret     → KERNEL VERIFIED
+## Limitations
 
-[tamper]
-
-verify secret     → KERNEL BLOCKED
-
-## Known Limitations
-
-- QEMU only — UEFI bootloader pending (v0.3.0)
-- Single-core — SMP planned
-- In-memory VFS — persistence via ATA only
-- Pure Rust BLAKE3 — SIMD (NEON/AVX-512) pending
-- ARM64 cycle benchmarks invalid on QEMU (CNTVCT_EL0)
+- Boots under QEMU; UEFI bootloader for bare-metal boot is pending.
+- Single-core; SMP and multi-core verification are future work.
+- BLAKE3 runs in portable mode in-kernel (no in-kernel SIMD yet); the native harness uses runtime SIMD.
+- Real-hardware results use a consumer laptop and phone; a dedicated embedded SoC (e.g. Raspberry Pi)
+  measurement is the immediate next step.
 
 ## Threat Model
 
-Defends against post-write in-memory tampering by ring-3 
-processes within a single-core, non-DMA execution model. 
-Does not defend against ring-0 compromise, DMA attacks, 
-multicore races, or speculative execution side channels.
+Assumes an adversary who can modify a file's in-memory bytes after they were validated, but cannot forge
+the stored provenance record (per-block leaves + root); single-core, no DMA, no ring-0. Within this model,
+per-read verification **reduces** the TOCTOU window: bytes returned by `read()` are verified at the moment
+of return. It does **not** eliminate TOCTOU (corruption after a verified read is out of scope), nor address
+replay/splicing on persistent storage or hardware memory-integrity attacks.
 
 ## Paper
 
-Under review. Data and full methodology available upon 
-acceptance.
+- Earlier formulation (whole-file per-read, equity framing): Zenodo, Apr. 2026,
+  [doi:10.5281/zenodo.19387932](https://doi.org/10.5281/zenodo.19387932).
 
 ## License
 
-MIT, Apache-2.0
+MIT and Apache-2.0
