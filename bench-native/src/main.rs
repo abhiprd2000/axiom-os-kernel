@@ -1,4 +1,3 @@
-cat > src/main.rs << 'EOF'
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -20,6 +19,94 @@ fn bench<F: FnMut()>(trials: usize, iters: u64, mut f: F) -> f64 {
         per_op.push(start.elapsed().as_nanos() as f64 / iters as f64);
     }
     median(per_op)
+}
+
+fn inline_vs_periodic() {
+    const NBLOCKS: usize = 256; 
+    const OPS: usize = 200_000; 
+    const VICTIM: usize = 123; 
+    const TAMPER_AT: usize = OPS / 2; 
+
+    let mut data = vec![0u8; NBLOCKS * BLOCK];
+    for (i, b) in data.iter_mut().enumerate() {
+        *b = (i as u32).wrapping_mul(2654435761) as u8;
+    }
+    let leaves: Vec<[u8; 32]> = (0..NBLOCKS)
+        .map(|i| *blake3::hash(&data[i * BLOCK..(i + 1) * BLOCK]).as_bytes())
+        .collect();
+
+    let verify = |blk: &[u8], stored: &[u8; 32]| -> bool {
+        let h = blake3::hash(blk);
+        let a = h.as_bytes();
+        let mut d = 0u8;
+        for i in 0..32 {
+            d |= a[i] ^ stored[i];
+        }
+        d == 0
+    };
+
+    let mut s: u64 = 0x9E3779B97F4A7C15;
+    let mut rng = || {
+        s ^= s << 13;
+        s ^= s >> 7;
+        s ^= s << 17;
+        s
+    };
+    let trace: Vec<usize> = (0..OPS).map(|_| (rng() as usize) % NBLOCKS).collect();
+
+    let blk0 = &data[VICTIM * BLOCK..(VICTIM + 1) * BLOCK];
+    let inline_ns = bench(7, 4000, || {
+        black_box(verify(black_box(blk0), &leaves[VICTIM]));
+    });
+    let scan_ns = bench(7, 200, || {
+        let mut bad = false;
+        for i in 0..NBLOCKS {
+            bad |= !verify(&data[i * BLOCK..(i + 1) * BLOCK], &leaves[i]);
+        }
+        black_box(bad);
+    });
+
+    let inline_detect = trace[TAMPER_AT..].iter().position(|&b| b == VICTIM);
+
+    println!();
+    println!(
+        "--- inline per-read vs periodic scan  ({} blocks = {} KiB, {} ops) ---",
+        NBLOCKS,
+        NBLOCKS * BLOCK / 1024,
+        OPS
+    );
+    println!(
+        "inline per-read : {:8.4} us/op | corrupted reads served = 0 | detection = next read of a block",
+        inline_ns / 1000.0
+    );
+    if let Some(d) = inline_detect {
+        println!("                  (victim first re-read {} ops after tamper; caught there, 0 corrupt bytes served)", d);
+    }
+    println!(
+        "{:>14}  {:>12}  {:>22}  {:>16}",
+        "scan_interval", "amort_us/op", "corrupted_reads_served", "detect_window_ops"
+    );
+    for &iv in &[1000usize, 10_000, 50_000, 100_000] {
+        let mut next_scan = TAMPER_AT;
+        while next_scan % iv != iv - 1 {
+            next_scan += 1;
+        }
+        let next_scan = next_scan.min(OPS - 1);
+        let corrupted = trace[TAMPER_AT..=next_scan]
+            .iter()
+            .filter(|&&b| b == VICTIM)
+            .count();
+        let amort = (scan_ns / iv as f64) / 1000.0;
+        println!(
+            "{:>14}  {:>12.4}  {:>22}  {:>16}",
+            iv,
+            amort,
+            corrupted,
+            next_scan - TAMPER_AT
+        );
+    }
+    println!("tradeoff: inline pays per read but serves 0 corrupted bytes; periodic is cheaper");
+    println!("          per op as the interval grows, but serves corrupted data across the window.");
 }
 
 fn main() {
@@ -51,5 +138,5 @@ fn main() {
     println!();
     println!("speedup = proportional-access effect (platform-independent in shape).");
     println!("absolute ms is specific to this CPU; label it arch={arch} in the paper.");
+    inline_vs_periodic();
 }
-EOF
