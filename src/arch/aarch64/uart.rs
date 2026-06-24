@@ -12,7 +12,9 @@ pub fn uart_putc(c: u8) {
 
 pub fn uart_puts(s: &str) {
     for byte in s.bytes() {
-        if byte == b'\n' { uart_putc(b'\r'); }
+        if byte == b'\n' {
+            uart_putc(b'\r');
+        }
         uart_putc(byte);
     }
 }

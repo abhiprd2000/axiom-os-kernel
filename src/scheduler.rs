@@ -1,5 +1,5 @@
-use alloc::vec::Vec;
 use crate::println;
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Priority {
@@ -53,10 +53,14 @@ impl Scheduler {
     }
 
     pub fn next(&mut self) -> Option<u64> {
-        if self.entries.is_empty() { return None; }
+        if self.entries.is_empty() {
+            return None;
+        }
 
         // Find highest priority Ready process
-        let next = self.entries.iter()
+        let next = self
+            .entries
+            .iter()
             .enumerate()
             .filter(|(_, e)| e.state == ProcessState::Ready)
             .max_by_key(|(_, e)| e.priority);
@@ -87,7 +91,10 @@ impl Scheduler {
 
     pub fn list(&self) {
         for e in &self.entries {
-            println!("  PID={} priority={:?} state={:?}", e.pid, e.priority, e.state);
+            println!(
+                "  PID={} priority={:?} state={:?}",
+                e.pid, e.priority, e.state
+            );
         }
     }
 }

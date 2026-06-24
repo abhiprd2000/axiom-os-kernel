@@ -1,17 +1,19 @@
 #![no_std]
 #![no_main]
 
-mod uart;
 mod boot;
+mod uart;
 
-use uart::{uart_puts, uart_put_u64};
+use uart::{uart_put_u64, uart_puts};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_main_arm() -> ! {
     uart_puts("\n  AXIOM OS v0.3.0-alpha - aarch64\n\n");
 
     let sp: u64;
-    unsafe { core::arch::asm!("mov {}, sp", out(reg) sp); }
+    unsafe {
+        core::arch::asm!("mov {}, sp", out(reg) sp);
+    }
     uart_puts("  SP: ");
     uart_put_u64(sp);
     uart_puts("\n\n");
@@ -39,7 +41,9 @@ pub extern "C" fn kernel_main_arm() -> ! {
     uart_puts("\n  Benchmark: OK\n\n");
 
     uart_puts("  ARM64 boot successful. Halting.\n");
-    loop { unsafe { core::arch::asm!("wfe") }; }
+    loop {
+        unsafe { core::arch::asm!("wfe") };
+    }
 }
 
 #[inline(never)]
@@ -66,5 +70,7 @@ fn read_cntvct() -> u64 {
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     uart::uart_puts("\n  KERNEL PANIC\n");
-    loop { unsafe { core::arch::asm!("wfe") }; }
+    loop {
+        unsafe { core::arch::asm!("wfe") };
+    }
 }

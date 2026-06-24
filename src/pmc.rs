@@ -10,33 +10,33 @@ pub use x86_64_impl::*;
 mod x86_64_impl {
     // x86_64 MSR addresses for performance monitoring
     const IA32_PERFEVTSEL0: u32 = 0x186;
-    const IA32_PMC0: u32        = 0xC1;
+    const IA32_PMC0: u32 = 0xC1;
     const IA32_PERF_GLOBAL_CTRL: u32 = 0x38F;
 
     const LLC_MISS_EVENT: u64 = 0x412E;
     const PMC_ENABLE: u64 = (1 << 22) | (1 << 17) | (1 << 16);
 
     unsafe fn wrmsr(msr: u32, value: u64) {
-    let lo = (value & 0xFFFFFFFF) as u32;
-    let hi = (value >> 32) as u32;
-    unsafe {
-        core::arch::asm!("wrmsr", in("ecx") msr, in("eax") lo, in("edx") hi);
-    }   
-}
+        let lo = (value & 0xFFFFFFFF) as u32;
+        let hi = (value >> 32) as u32;
+        unsafe {
+            core::arch::asm!("wrmsr", in("ecx") msr, in("eax") lo, in("edx") hi);
+        }
+    }
     unsafe fn rdmsr(msr: u32) -> u64 {
-    let (lo, hi): (u32, u32);
-    unsafe {
-        core::arch::asm!("rdmsr", in("ecx") msr, out("eax") lo, out("edx") hi);
+        let (lo, hi): (u32, u32);
+        unsafe {
+            core::arch::asm!("rdmsr", in("ecx") msr, out("eax") lo, out("edx") hi);
+        }
+        ((hi as u64) << 32) | (lo as u64)
     }
-    ((hi as u64) << 32) | (lo as u64)
-}
     unsafe fn rdpmc(counter: u32) -> u64 {
-    let (lo, hi): (u32, u32);
-    unsafe {
-        core::arch::asm!("rdpmc", in("ecx") counter, out("eax") lo, out("edx") hi);
+        let (lo, hi): (u32, u32);
+        unsafe {
+            core::arch::asm!("rdpmc", in("ecx") counter, out("eax") lo, out("edx") hi);
+        }
+        ((hi as u64) << 32) | (lo as u64)
     }
-    ((hi as u64) << 32) | (lo as u64)
-}
 
     pub fn init_cache_miss_counter() {
         unsafe {
@@ -55,7 +55,9 @@ mod x86_64_impl {
     where
         F: FnOnce() -> R,
     {
-        unsafe { core::arch::asm!("lfence", options(nomem, nostack, preserves_flags)); }
+        unsafe {
+            core::arch::asm!("lfence", options(nomem, nostack, preserves_flags));
+        }
         let cycles_start = crate::benchmark::read_tsc();
         let misses_start = read_cache_misses();
 
@@ -63,11 +65,17 @@ mod x86_64_impl {
         let result = f();
         core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 
-        unsafe { core::arch::asm!("lfence", options(nomem, nostack, preserves_flags)); }
+        unsafe {
+            core::arch::asm!("lfence", options(nomem, nostack, preserves_flags));
+        }
         let misses_end = read_cache_misses();
         let cycles_end = crate::benchmark::read_tsc();
 
-        (result, misses_end.wrapping_sub(misses_start), cycles_end.wrapping_sub(cycles_start))
+        (
+            result,
+            misses_end.wrapping_sub(misses_start),
+            cycles_end.wrapping_sub(cycles_start),
+        )
     }
 }
 
@@ -76,8 +84,9 @@ mod x86_64_impl {
 pub fn init_cache_miss_counter() {}
 
 #[cfg(not(target_arch = "x86_64"))]
-pub fn measure<F, R>(f: F) -> (R, u64, u64) 
-where F: FnOnce() -> R 
+pub fn measure<F, R>(f: F) -> (R, u64, u64)
+where
+    F: FnOnce() -> R,
 {
     (f(), 0, 0)
 }

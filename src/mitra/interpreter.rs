@@ -1,6 +1,6 @@
-use alloc::vec::Vec;
 use super::parser::AstNode;
-use crate::{vfs::VirtualFS, ipc::MessageQueue, provenance::TrustedData, println};
+use crate::{ipc::MessageQueue, println, provenance::TrustedData, vfs::VirtualFS};
+use alloc::vec::Vec;
 
 pub struct Interpreter<'a> {
     vfs: &'a mut VirtualFS,
@@ -34,9 +34,9 @@ impl<'a> Interpreter<'a> {
                 AstNode::Verify { name } => {
                     println!("[mitra] verifying \"{}\"...", name);
                     match self.vfs.verify(&name) {
-                        Some(true)  => println!("[mitra] VERIFIED: \"{}\" is authentic", name),
+                        Some(true) => println!("[mitra] VERIFIED: \"{}\" is authentic", name),
                         Some(false) => println!("[mitra] TAMPERED: \"{}\" hash mismatch!", name),
-                        None        => println!("[mitra] NOT FOUND: \"{}\"", name),
+                        None => println!("[mitra] NOT FOUND: \"{}\"", name),
                     }
                 }
                 AstNode::Spawn { pid } => {

@@ -1,6 +1,6 @@
-use alloc::vec::Vec;
-use alloc::vec;
 use crate::println;
+use alloc::vec;
+use alloc::vec::Vec;
 
 pub const DISK_SIZE: usize = 4 * 1024 * 1024; // 4MB
 pub const SECTOR_SIZE: usize = 512;

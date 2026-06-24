@@ -10,7 +10,11 @@ pub struct TrustedData<'a> {
 impl<'a> TrustedData<'a> {
     pub fn new(name: &'a str, data: &'a [u8]) -> Self {
         let hash = provenance_hash(data);
-        TrustedData { name, data, expected_hash: hash }
+        TrustedData {
+            name,
+            data,
+            expected_hash: hash,
+        }
     }
 
     pub fn verify_or_halt(&self) -> bool {

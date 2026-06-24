@@ -1,15 +1,32 @@
-use alloc::vec::Vec;
-use alloc::string::String;
 use super::lexer::Token;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone)]
 pub enum AstNode {
-    Trust { name: String, value: String },
-    TrustedData { name: String, content: String },
-    Verify { name: String },
-    Spawn { pid: u64 },
-    Send { from: u64, to: u64, msg: String },
-    If { condition: String, body: Vec<AstNode> },
+    Trust {
+        name: String,
+        value: String,
+    },
+    TrustedData {
+        name: String,
+        content: String,
+    },
+    Verify {
+        name: String,
+    },
+    Spawn {
+        pid: u64,
+    },
+    Send {
+        from: u64,
+        to: u64,
+        msg: String,
+    },
+    If {
+        condition: String,
+        body: Vec<AstNode>,
+    },
 }
 
 pub struct Parser {
@@ -33,7 +50,9 @@ impl Parser {
     }
 
     fn skip_newlines(&mut self) {
-        while self.peek() == &Token::Newline { self.advance(); }
+        while self.peek() == &Token::Newline {
+            self.advance();
+        }
     }
 
     pub fn parse(&mut self) -> Vec<AstNode> {
@@ -88,13 +107,24 @@ impl Parser {
                 }
                 Token::Send => {
                     self.advance();
-                    let from = match self.advance() { Token::Number(n) => n, _ => 0 };
+                    let from = match self.advance() {
+                        Token::Number(n) => n,
+                        _ => 0,
+                    };
                     self.advance(); // arrow
-                    let to = match self.advance() { Token::Number(n) => n, _ => 0 };
-                    let msg = match self.advance() { Token::StringLit(s) => s, _ => String::from("") };
+                    let to = match self.advance() {
+                        Token::Number(n) => n,
+                        _ => 0,
+                    };
+                    let msg = match self.advance() {
+                        Token::StringLit(s) => s,
+                        _ => String::from(""),
+                    };
                     nodes.push(AstNode::Send { from, to, msg });
                 }
-                _ => { self.advance(); }
+                _ => {
+                    self.advance();
+                }
             }
         }
         nodes

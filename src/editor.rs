@@ -1,7 +1,7 @@
-use alloc::vec::Vec;
-use alloc::string::String;
-use crate::{print, println};
 use crate::vga_buffer::{self, Color};
+use crate::{print, println};
+use alloc::string::String;
+use alloc::vec::Vec;
 
 pub struct Editor {
     filename: String,
@@ -14,8 +14,16 @@ impl Editor {
     pub fn new(filename: &str) -> Self {
         vga_buffer::clear_screen();
         vga_buffer::println_colored("=== AXIOM TEXT EDITOR ===", Color::Yellow, Color::Black);
-        vga_buffer::println_colored(&alloc::format!("File: {}", filename), Color::LightCyan, Color::Black);
-        vga_buffer::println_colored("Ctrl+S = save  Ctrl+Q = quit  Enter = new line", Color::LightGray, Color::Black);
+        vga_buffer::println_colored(
+            &alloc::format!("File: {}", filename),
+            Color::LightCyan,
+            Color::Black,
+        );
+        vga_buffer::println_colored(
+            "Ctrl+S = save  Ctrl+Q = quit  Enter = new line",
+            Color::LightGray,
+            Color::Black,
+        );
         println!("─────────────────────────────────────────");
         println!("");
 
@@ -29,18 +37,21 @@ impl Editor {
 
     pub fn handle_char(&mut self, c: char) -> bool {
         match c {
-            '\x11' => { // Ctrl+Q
+            '\x11' => {
+                // Ctrl+Q
                 if self.modified {
                     vga_buffer::println_colored(
                         "[editor] unsaved changes — press Ctrl+S to save or Ctrl+Q again to quit",
-                        Color::LightRed, Color::Black
+                        Color::LightRed,
+                        Color::Black,
                     );
                     self.modified = false; // second Ctrl+Q exits
                     return false;
                 }
                 return true; // quit
             }
-            '\x13' => { // Ctrl+S
+            '\x13' => {
+                // Ctrl+S
                 self.save();
                 return false;
             }
@@ -51,7 +62,8 @@ impl Editor {
                 println!("");
                 print!("  ");
             }
-            '\x08' => { // Backspace
+            '\x08' => {
+                // Backspace
                 if !self.current_line.is_empty() {
                     self.current_line.pop();
                     crate::vga_buffer::WRITER.lock().backspace();
@@ -81,7 +93,9 @@ impl Editor {
             content.push('\n');
         }
         // Save to VFS with provenance
-        crate::shell::VFS.lock().create(&self.filename, content.as_bytes());
+        crate::shell::VFS
+            .lock()
+            .create(&self.filename, content.as_bytes());
         // Save to ATA disk
         let saved = crate::ata::write_sector(2, &{
             let mut sector = [0u8; 512];
@@ -90,18 +104,27 @@ impl Editor {
             let name = self.filename.as_bytes();
             let nlen = name.len().min(11) as u8;
             sector[0] = nlen;
-            sector[1..1+nlen as usize].copy_from_slice(&name[..nlen as usize]);
+            sector[1..1 + nlen as usize].copy_from_slice(&name[..nlen as usize]);
             sector[12] = len as u8;
-            sector[13..13+len].copy_from_slice(&bytes[..len]);
+            sector[13..13 + len].copy_from_slice(&bytes[..len]);
             sector
         });
         if saved {
             vga_buffer::println_colored(
-                &alloc::format!("\n[editor] SAVED: {} ({} bytes) to disk", self.filename, content.len()),
-                Color::LightGreen, Color::Black
+                &alloc::format!(
+                    "\n[editor] SAVED: {} ({} bytes) to disk",
+                    self.filename,
+                    content.len()
+                ),
+                Color::LightGreen,
+                Color::Black,
             );
         } else {
-            vga_buffer::println_colored("\n[editor] saved to VFS only (no persistent disk)", Color::Yellow, Color::Black);
+            vga_buffer::println_colored(
+                "\n[editor] saved to VFS only (no persistent disk)",
+                Color::Yellow,
+                Color::Black,
+            );
         }
         self.modified = false;
     }

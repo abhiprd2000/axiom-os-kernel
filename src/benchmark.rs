@@ -6,7 +6,11 @@ pub struct Benchmark {
 
 impl Benchmark {
     pub fn new(name: &'static str) -> Self {
-        Benchmark { name, iterations: 0, total_cycles: 0 }
+        Benchmark {
+            name,
+            iterations: 0,
+            total_cycles: 0,
+        }
     }
 
     pub fn run<F: FnMut()>(&mut self, iterations: u64, mut f: F) {
@@ -22,9 +26,16 @@ impl Benchmark {
     pub fn report(&self) {
         let avg = if self.iterations > 0 {
             self.total_cycles / self.iterations
-        } else { 0 };
-        crate::println!("[bench] {}: {} iterations, {} total cycles, {} avg cycles/op",
-            self.name, self.iterations, self.total_cycles, avg);
+        } else {
+            0
+        };
+        crate::println!(
+            "[bench] {}: {} iterations, {} total cycles, {} avg cycles/op",
+            self.name,
+            self.iterations,
+            self.total_cycles,
+            avg
+        );
     }
 }
 

@@ -1,26 +1,23 @@
-use alloc::vec::Vec;
-use crate::println;
-use crate::vga_buffer::{self, Color};
-use crate::vfs::VirtualFS;
 use crate::fat32::Fat32;
-use crate::scheduler::{Scheduler, Priority};
-
-
+use crate::println;
+use crate::scheduler::{Priority, Scheduler};
+use crate::vfs::VirtualFS;
+use crate::vga_buffer::{self, Color};
+use alloc::vec::Vec;
 
 extern crate blake3;
-use spin::Mutex;
 use lazy_static::lazy_static;
+use spin::Mutex;
 
 lazy_static! {
     pub static ref EDITOR_FILE: Mutex<Option<alloc::string::String>> = Mutex::new(None);
     pub static ref EDITOR_ACTIVE: Mutex<Option<crate::editor::Editor>> = Mutex::new(None);
-    pub static ref HISTORY: Mutex<[alloc::string::String; 10]> = 
+    pub static ref HISTORY: Mutex<[alloc::string::String; 10]> =
         Mutex::new(core::array::from_fn(|_| alloc::string::String::new()));
     pub static ref HIST_LEN: Mutex<usize> = Mutex::new(0);
     pub static ref HIST_POS: Mutex<usize> = Mutex::new(0);
     pub static ref VFS: Mutex<VirtualFS> = Mutex::new(VirtualFS::new());
     pub static ref FAT32: Mutex<Fat32> = Mutex::new(Fat32::new());
-
     pub static ref SCHED: Mutex<Scheduler> = Mutex::new({
         let mut s = Scheduler::new();
         s.add(1, Priority::RealTime);
@@ -34,17 +31,19 @@ pub fn interpret_command(command: &str) {
     let cmd = command.trim();
     let parts: Vec<&str> = cmd.splitn(2, ' ').collect();
     let verb = parts[0];
-    let arg  = if parts.len() > 1 { parts[1].trim() } else { "" };
+    let arg = if parts.len() > 1 { parts[1].trim() } else { "" };
 
     if !cmd.is_empty() && cmd != "!!" {
         let mut hist = HISTORY.lock();
-        let mut len  = HIST_LEN.lock();
-        let mut pos  = HIST_POS.lock();
+        let mut len = HIST_LEN.lock();
+        let mut pos = HIST_POS.lock();
         let last_idx = if *len == 0 { 10 } else { (*pos + 10 - 1) % 10 };
         if *len == 0 || hist[last_idx] != cmd {
             hist[*pos] = alloc::string::String::from(cmd);
             *pos = (*pos + 1) % 10;
-            if *len < 10 { *len += 1; }
+            if *len < 10 {
+                *len += 1;
+            }
         }
     }
 
@@ -86,8 +85,10 @@ pub fn interpret_command(command: &str) {
             println!("  !!                  - re-run last command");
             println!("  !n <n>              - re-run command #n");
             println!("  axiom               - about");
-                }
-        "clear" => { vga_buffer::clear_screen(); }
+        }
+        "clear" => {
+            vga_buffer::clear_screen();
+        }
         "info" => {
             println!("Axiom OS v0.3.0-alpha | Arch: x86_64 + aarch64 | Bare Metal");
             println!("Hash: BLAKE3 | Storage: FAT32 RAM Disk (4MB)");
@@ -108,16 +109,33 @@ pub fn interpret_command(command: &str) {
                 for f in &vfs.files {
                     let verified = crate::provenance::provenance_hash(&f.data) == f.provenance_hash;
                     let h = f.provenance_hash;
-                    let hash_short = alloc::format!("{:02x}{:02x}{:02x}{:02x}", h[0], h[1], h[2], h[3]);
+                    let hash_short =
+                        alloc::format!("{:02x}{:02x}{:02x}{:02x}", h[0], h[1], h[2], h[3]);
                     let status = if verified { "[OK]" } else { "[TAMPERED]" };
                     if verified {
                         crate::vga_buffer::println_colored(
-                            &alloc::format!("{:<16} {:>8} {:>10}  {}", f.name, f.data.len(), hash_short, status),
-                            crate::vga_buffer::Color::LightGreen, crate::vga_buffer::Color::Black);
+                            &alloc::format!(
+                                "{:<16} {:>8} {:>10}  {}",
+                                f.name,
+                                f.data.len(),
+                                hash_short,
+                                status
+                            ),
+                            crate::vga_buffer::Color::LightGreen,
+                            crate::vga_buffer::Color::Black,
+                        );
                     } else {
                         crate::vga_buffer::println_colored(
-                            &alloc::format!("{:<16} {:>8} {:>10}  {}", f.name, f.data.len(), hash_short, status),
-                            crate::vga_buffer::Color::LightRed, crate::vga_buffer::Color::Black);
+                            &alloc::format!(
+                                "{:<16} {:>8} {:>10}  {}",
+                                f.name,
+                                f.data.len(),
+                                hash_short,
+                                status
+                            ),
+                            crate::vga_buffer::Color::LightRed,
+                            crate::vga_buffer::Color::Black,
+                        );
                     }
                 }
             } else {
@@ -130,7 +148,7 @@ pub fn interpret_command(command: &str) {
                 println!("[error] usage: trust <name> <content>");
                 return;
             }
-            let name    = sub[0].trim();
+            let name = sub[0].trim();
             let content = sub[1].trim().as_bytes();
             let mut vfs = VFS.lock();
             vfs.create(name, content);
@@ -144,15 +162,33 @@ pub fn interpret_command(command: &str) {
             }
             let vfs = VFS.lock();
             match vfs.verify(arg) {
-                Some(true)  => {
-                    vga_buffer::println_colored(&alloc::format!("[AXIOM KERNEL] VERIFIED: {}", arg), Color::LightGreen, Color::Black);
-                    vga_buffer::println_colored("[AXIOM KERNEL] Hash matches - data authentic", Color::LightGreen, Color::Black);
+                Some(true) => {
+                    vga_buffer::println_colored(
+                        &alloc::format!("[AXIOM KERNEL] VERIFIED: {}", arg),
+                        Color::LightGreen,
+                        Color::Black,
+                    );
+                    vga_buffer::println_colored(
+                        "[AXIOM KERNEL] Hash matches - data authentic",
+                        Color::LightGreen,
+                        Color::Black,
+                    );
                 }
                 Some(false) => {
-                    vga_buffer::println_colored(&alloc::format!("[AXIOM KERNEL] TAMPERED: {}", arg), Color::LightRed, Color::Black);
-                    vga_buffer::println_colored("[AXIOM KERNEL] Hash mismatch - BLOCKED", Color::LightRed, Color::Black);
+                    vga_buffer::println_colored(
+                        &alloc::format!("[AXIOM KERNEL] TAMPERED: {}", arg),
+                        Color::LightRed,
+                        Color::Black,
+                    );
+                    vga_buffer::println_colored(
+                        "[AXIOM KERNEL] Hash mismatch - BLOCKED",
+                        Color::LightRed,
+                        Color::Black,
+                    );
                 }
-                None => { println!("[error] file not found: {}", arg); }
+                None => {
+                    println!("[error] file not found: {}", arg);
+                }
             }
         }
         "tamper" => {
@@ -185,11 +221,16 @@ pub fn interpret_command(command: &str) {
                     let s = core::str::from_utf8(&data).unwrap_or("binary");
                     println!("[fat32] {}: {}", arg, s);
                 }
-                None => { println!("[error] file not found: {}", arg); }
+                None => {
+                    println!("[error] file not found: {}", arg);
+                }
             }
         }
         "disktamper" => {
-            if arg.is_empty() { println!("[error] usage: disktamper <name>"); return; }
+            if arg.is_empty() {
+                println!("[error] usage: disktamper <name>");
+                return;
+            }
             if FAT32.lock().tamper_file(arg) {
                 println!("[attack] now run: diskverify {}", arg);
             } else {
@@ -197,12 +238,23 @@ pub fn interpret_command(command: &str) {
             }
         }
         "diskverify" => {
-            if arg.is_empty() { println!("[error] usage: diskverify <name>"); return; }
+            if arg.is_empty() {
+                println!("[error] usage: diskverify <name>");
+                return;
+            }
             let result = FAT32.lock().verify_file(arg);
             match result {
-                Some(true)  => { println!("[AXIOM KERNEL] DISK VERIFIED: {}", arg); println!("[AXIOM KERNEL] FAT32 hash matches - authentic"); }
-                Some(false) => { println!("[AXIOM KERNEL] DISK TAMPERED: {}", arg); println!("[AXIOM KERNEL] FAT32 hash mismatch - BLOCKED"); }
-                None => { println!("[error] file not found: {}", arg); }
+                Some(true) => {
+                    println!("[AXIOM KERNEL] DISK VERIFIED: {}", arg);
+                    println!("[AXIOM KERNEL] FAT32 hash matches - authentic");
+                }
+                Some(false) => {
+                    println!("[AXIOM KERNEL] DISK TAMPERED: {}", arg);
+                    println!("[AXIOM KERNEL] FAT32 hash mismatch - BLOCKED");
+                }
+                None => {
+                    println!("[error] file not found: {}", arg);
+                }
             }
         }
         "diskls" => {
@@ -232,7 +284,11 @@ pub fn interpret_command(command: &str) {
                 let mut fa = crate::FRAME_ALLOCATOR.lock();
                 if let Some(ref mut allocator) = *fa {
                     crate::PROCESS_MANAGER.lock().spawn(
-                        pid, shell_process, allocator, phys_offset, kernel_l4
+                        pid,
+                        shell_process,
+                        allocator,
+                        phys_offset,
+                        kernel_l4,
                     );
                     SCHED.lock().add(pid, crate::scheduler::Priority::Normal);
                     println!("[kernel] spawned PID={} priority=Normal", pid);
@@ -267,27 +323,36 @@ pub fn interpret_command(command: &str) {
             let h = blake3::hash(arg.as_bytes());
             println!("[blake3] input: {}", arg);
             let bytes = h.as_bytes();
-            println!("[blake3] hash: {:02x}{:02x}{:02x}{:02x}...{:02x}{:02x}", bytes[0], bytes[1], bytes[2], bytes[3], bytes[30], bytes[31]);
+            println!(
+                "[blake3] hash: {:02x}{:02x}{:02x}{:02x}...{:02x}{:02x}",
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[30], bytes[31]
+            );
         }
         "bench" => {
             use crate::benchmark::Benchmark;
-            use crate::provenance::{provenance_hash, constant_time_eq};
             use crate::pmc;
+            use crate::provenance::{constant_time_eq, provenance_hash};
             use core::hint::black_box;
 
             // 'bench'      -> RDTSC only (safe under plain QEMU/TCG)
             // 'bench pmc'  -> also read LLC misses (ONLY under KVM -cpu host,pmu=on / bare metal)
             // 'bench disk' -> also run the FAT32 path (writes to disk)
-            let want_pmc  = arg.contains("pmc");
+            let want_pmc = arg.contains("pmc");
             let want_disk = arg.contains("disk");
 
             println!("=== Axiom OS Benchmark Suite ===");
-            println!("[bench] RDTSC cycle counts; black_box throughout to block dead-code elimination");
+            println!(
+                "[bench] RDTSC cycle counts; black_box throughout to block dead-code elimination"
+            );
             if want_pmc {
-                println!("[bench] PMC on: LLC-miss counts valid ONLY under KVM (-cpu host,pmu=on)/bare metal");
+                println!(
+                    "[bench] PMC on: LLC-miss counts valid ONLY under KVM (-cpu host,pmu=on)/bare metal"
+                );
                 pmc::init_cache_miss_counter();
             } else {
-                println!("[bench] PMC off (rdpmc faults under plain QEMU); run 'bench pmc' under KVM for misses");
+                println!(
+                    "[bench] PMC off (rdpmc faults under plain QEMU); run 'bench pmc' under KVM for misses"
+                );
             }
             println!("");
 
@@ -325,7 +390,9 @@ pub fn interpret_command(command: &str) {
             println!("");
 
             println!("--- read+verify: whole-file vs block-level (proportional access) ---");
-            println!("[bench] setup (alloc + insert) is OUTSIDE the timed loop; only read+verify is timed");
+            println!(
+                "[bench] setup (alloc + insert) is OUTSIDE the timed loop; only read+verify is timed"
+            );
             {
                 let sizes: [usize; 5] = [4096, 16384, 65536, 262144, 1048576];
                 for &sz in sizes.iter() {
@@ -355,17 +422,29 @@ pub fn interpret_command(command: &str) {
 
                     // cycles + LLC misses per path — only when explicitly asked (KVM/bare-metal)
                     if want_pmc {
-                        let (_, wmiss, wcyc) = pmc::measure(|| { let r = v.read(black_box("bench")); black_box(r); });
-                        let (_, bmiss, bcyc) = pmc::measure(|| { let r = v.read_range(black_box("bench"), 0, 4096); black_box(r); });
-                        println!("[pmc] wholefile: {} cyc, {} LLC-miss  |  block: {} cyc, {} LLC-miss",
-                            wcyc, wmiss, bcyc, bmiss);
+                        let (_, wmiss, wcyc) = pmc::measure(|| {
+                            let r = v.read(black_box("bench"));
+                            black_box(r);
+                        });
+                        let (_, bmiss, bcyc) = pmc::measure(|| {
+                            let r = v.read_range(black_box("bench"), 0, 4096);
+                            black_box(r);
+                        });
+                        println!(
+                            "[pmc] wholefile: {} cyc, {} LLC-miss  |  block: {} cyc, {} LLC-miss",
+                            wcyc, wmiss, bcyc, bmiss
+                        );
                     }
                 }
-                println!("[bench] expected shape: wholefile grows ~linearly with size; block stays ~flat");
+                println!(
+                    "[bench] expected shape: wholefile grows ~linearly with size; block stays ~flat"
+                );
             }
             println!("");
 
-            println!("--- write path: one block write (+ lazy Merkle root) vs full-file rehash ---");
+            println!(
+                "--- write path: one block write (+ lazy Merkle root) vs full-file rehash ---"
+            );
             {
                 let sz = 1_048_576usize; // 1 MiB = 256 blocks
                 let mut v = crate::vfs::VirtualFS::new();
@@ -389,12 +468,18 @@ pub fn interpret_command(command: &str) {
                     let _ = black_box(h);
                 });
                 brehash.report();
-                println!("[bench] note: root recompute is from-leaves (O(blocks)), still far below O(filesize) rehash");
+                println!(
+                    "[bench] note: root recompute is from-leaves (O(blocks)), still far below O(filesize) rehash"
+                );
             }
             println!("");
 
-            println!("--- FAT32 persistent read+verify (skipped by default — it WRITES to disk) ---");
-            println!("[bench] run 'bench disk' to include it, and ONLY against a throwaway disk image");
+            println!(
+                "--- FAT32 persistent read+verify (skipped by default — it WRITES to disk) ---"
+            );
+            println!(
+                "[bench] run 'bench disk' to include it, and ONLY against a throwaway disk image"
+            );
             if want_disk {
                 let payload = alloc::vec![0xCDu8; 512];
                 FAT32.lock().write_file("bench.dat", &payload);
@@ -425,17 +510,17 @@ pub fn interpret_command(command: &str) {
             println!("");
             println!("[bench] done — run 5 cold boots and record all values");
         }
-        
+
         "mitra" => {
             if arg.is_empty() {
                 println!("[error] usage: mitra <code>");
                 println!("[hint]  example: mitra trust x = hello");
                 return;
             }
+            use crate::ipc::MessageQueue;
+            use crate::mitra::interpreter::Interpreter;
             use crate::mitra::lexer::Lexer;
             use crate::mitra::parser::Parser;
-            use crate::mitra::interpreter::Interpreter;
-            use crate::ipc::MessageQueue;
             let mut mq = MessageQueue::new();
             let mut lexer = Lexer::new(arg);
             let tokens = lexer.tokenize();
@@ -455,9 +540,11 @@ pub fn interpret_command(command: &str) {
             println!("  OS:        Axiom OS v0.3.0-alpha");
             println!("  Arch:      x86_64 + aarch64 (dual architecture)");
             println!("  Hash:      BLAKE3 (cryptographic)");
-            println!("  Heap:      {} KB mapped at {:#x}",
+            println!(
+                "  Heap:      {} KB mapped at {:#x}",
                 crate::allocator::HEAP_SIZE / 1024,
-                crate::allocator::HEAP_START);
+                crate::allocator::HEAP_START
+            );
             println!("  RAM Disk:  4 MB FAT32");
             println!("  Processes: {}", crate::PROCESS_MANAGER.lock().count());
             println!("  Syscalls:  SYS_EXIT/YIELD/SPAWN/WRITE/VERIFY");
@@ -501,13 +588,18 @@ pub fn interpret_command(command: &str) {
                     let name = arg.as_bytes();
                     let nlen = name.len().min(11) as u8;
                     sector[0] = nlen;
-                    sector[1..1+nlen as usize].copy_from_slice(&name[..nlen as usize]);
+                    sector[1..1 + nlen as usize].copy_from_slice(&name[..nlen as usize]);
                     sector[12] = len as u8;
-                    sector[13..13+len].copy_from_slice(&d[..len]);
+                    sector[13..13 + len].copy_from_slice(&d[..len]);
                     if crate::ata::write_sector(1, &sector) {
                         vga_buffer::println_colored(
-                            &alloc::format!("[ata] SAVED: {} ({} bytes) to persistent disk", arg, len),
-                            Color::LightGreen, Color::Black
+                            &alloc::format!(
+                                "[ata] SAVED: {} ({} bytes) to persistent disk",
+                                arg,
+                                len
+                            ),
+                            Color::LightGreen,
+                            Color::Black,
                         );
                     } else {
                         println!("[error] write failed - is persistent disk online?");
@@ -527,17 +619,27 @@ pub fn interpret_command(command: &str) {
                 return;
             }
             let nlen = sector[0] as usize;
-            let stored_name = core::str::from_utf8(&sector[1..1+nlen]).unwrap_or("").trim();
+            let stored_name = core::str::from_utf8(&sector[1..1 + nlen])
+                .unwrap_or("")
+                .trim();
             if stored_name.eq_ignore_ascii_case(arg.trim()) {
                 let dlen = sector[12] as usize;
-                let data = &sector[13..13+dlen];
+                let data = &sector[13..13 + dlen];
                 VFS.lock().create(arg, data);
                 vga_buffer::println_colored(
-                    &alloc::format!("[ata] LOADED: {} ({} bytes) from persistent disk", arg, dlen),
-                    Color::LightGreen, Color::Black
+                    &alloc::format!(
+                        "[ata] LOADED: {} ({} bytes) from persistent disk",
+                        arg,
+                        dlen
+                    ),
+                    Color::LightGreen,
+                    Color::Black,
                 );
             } else {
-                println!("[error] file '{}' not found on disk (found: '{}')", arg, stored_name);
+                println!(
+                    "[error] file '{}' not found on disk (found: '{}')",
+                    arg, stored_name
+                );
             }
         }
         "run" => {
@@ -545,7 +647,7 @@ pub fn interpret_command(command: &str) {
                 println!("[error] usage: run <script.mtr>");
                 return;
             }
-// read_file verifies provenance atomically under a single lock
+            // read_file verifies provenance atomically under a single lock
             // acquisition before returning data. Returning Some(data) is proof
             // the hash matched — no second verify_file call needed. A separate
             // call would re-acquire the lock after data is already in hand,
@@ -555,8 +657,12 @@ pub fn interpret_command(command: &str) {
                 None => {
                     // read_file already printed READ BLOCKED on hash failure.
                     vga_buffer::println_colored(
-                        &alloc::format!("[AXIOM KERNEL] SCRIPT BLOCKED: {} — provenance failed or not found", arg),
-                        Color::LightRed, Color::Black,
+                        &alloc::format!(
+                            "[AXIOM KERNEL] SCRIPT BLOCKED: {} — provenance failed or not found",
+                            arg
+                        ),
+                        Color::LightRed,
+                        Color::Black,
                     );
                     return;
                 }
@@ -565,9 +671,10 @@ pub fn interpret_command(command: &str) {
                     // stored provenance record inside that same lock scope.
                     vga_buffer::println_colored(
                         &alloc::format!("[AXIOM KERNEL] SCRIPT VERIFIED: {}", arg),
-                        Color::LightGreen, Color::Black,
+                        Color::LightGreen,
+                        Color::Black,
                     );
-                    println!("[mitra] loading {} ({} bytes)", arg, data.len());                    // Parse and execute
+                    println!("[mitra] loading {} ({} bytes)", arg, data.len()); // Parse and execute
                     let src = match core::str::from_utf8(&data) {
                         Ok(s) => s,
                         Err(_) => {
@@ -575,10 +682,10 @@ pub fn interpret_command(command: &str) {
                             return;
                         }
                     };
+                    use crate::ipc::MessageQueue;
+                    use crate::mitra::interpreter::Interpreter;
                     use crate::mitra::lexer::Lexer;
                     use crate::mitra::parser::Parser;
-                    use crate::mitra::interpreter::Interpreter;
-                    use crate::ipc::MessageQueue;
                     let mut mq = MessageQueue::new();
                     let mut lexer = Lexer::new(src);
                     let tokens = lexer.tokenize();
@@ -595,7 +702,7 @@ pub fn interpret_command(command: &str) {
         "echo" => {
             println!("{}", arg);
         }
-"write" => {
+        "write" => {
             // Stores data with a zeroed provenance record. The kernel blocks
             // every read of this file — use `trust` for readable files.
             let sub: Vec<&str> = arg.splitn(2, ' ').collect();
@@ -603,17 +710,25 @@ pub fn interpret_command(command: &str) {
                 println!("[error] usage: write <name> <content>");
                 return;
             }
-            let name    = sub[0].trim();
+            let name = sub[0].trim();
             let content = sub[1].trim().as_bytes();
             let mut vfs = VFS.lock();
             vfs.create_untrusted(name, content);
             vga_buffer::println_colored(
-                &alloc::format!("[vfs] written: {} ({} bytes) — NO provenance record", name, content.len()),
-                Color::Yellow, Color::Black,
+                &alloc::format!(
+                    "[vfs] written: {} ({} bytes) — NO provenance record",
+                    name,
+                    content.len()
+                ),
+                Color::Yellow,
+                Color::Black,
             );
-            println!("[kernel] reads of '{}' will be blocked — use 'trust' for readable files", name);
+            println!(
+                "[kernel] reads of '{}' will be blocked — use 'trust' for readable files",
+                name
+            );
         }
-                "cat" => {
+        "cat" => {
             if arg.is_empty() {
                 println!("[error] usage: cat <filename>");
                 return;
@@ -640,8 +755,8 @@ pub fn interpret_command(command: &str) {
         }
         "history" => {
             let hist = HISTORY.lock();
-            let len  = *HIST_LEN.lock();
-            let pos  = *HIST_POS.lock();
+            let len = *HIST_LEN.lock();
+            let pos = *HIST_POS.lock();
             if len == 0 {
                 println!("  (no history)");
             } else {
@@ -654,8 +769,8 @@ pub fn interpret_command(command: &str) {
         }
         "!!" => {
             let hist = HISTORY.lock();
-            let len  = *HIST_LEN.lock();
-            let pos  = *HIST_POS.lock();
+            let len = *HIST_LEN.lock();
+            let pos = *HIST_POS.lock();
             if len == 0 {
                 println!("[error] no previous command");
             } else {
@@ -673,8 +788,8 @@ pub fn interpret_command(command: &str) {
             }
             if let Ok(n) = arg.parse::<usize>() {
                 let hist = HISTORY.lock();
-                let len  = *HIST_LEN.lock();
-                let pos  = *HIST_POS.lock();
+                let len = *HIST_LEN.lock();
+                let pos = *HIST_POS.lock();
                 if n == 0 || n > len {
                     println!("[error] no command at position {}", n);
                 } else {
@@ -694,13 +809,23 @@ pub fn interpret_command(command: &str) {
                 println!("[error] usage: calc <expr>");
             } else {
                 match crate::calc::evaluate(arg) {
-                    Ok(v)  => crate::vga_buffer::println_colored(&alloc::format!("= {}", crate::calc::format_result(v)), crate::vga_buffer::Color::LightGreen, crate::vga_buffer::Color::Black),
-                    Err(e) => crate::vga_buffer::println_colored(&alloc::format!("[calc error] {}", e), crate::vga_buffer::Color::LightRed, crate::vga_buffer::Color::Black),
+                    Ok(v) => crate::vga_buffer::println_colored(
+                        &alloc::format!("= {}", crate::calc::format_result(v)),
+                        crate::vga_buffer::Color::LightGreen,
+                        crate::vga_buffer::Color::Black,
+                    ),
+                    Err(e) => crate::vga_buffer::println_colored(
+                        &alloc::format!("[calc error] {}", e),
+                        crate::vga_buffer::Color::LightRed,
+                        crate::vga_buffer::Color::Black,
+                    ),
                 }
             }
         }
         "" => {}
-        _ => { println!("Unknown: {} - type help", cmd); }
+        _ => {
+            println!("Unknown: {} - type help", cmd);
+        }
     }
 }
 

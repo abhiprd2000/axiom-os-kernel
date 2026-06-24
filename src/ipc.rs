@@ -1,6 +1,6 @@
-use alloc::vec::Vec;
-use alloc::string::String;
 use crate::println;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone)]
 pub struct Message {
@@ -25,7 +25,9 @@ pub struct MessageQueue {
 
 impl MessageQueue {
     pub fn new() -> Self {
-        MessageQueue { messages: Vec::new() }
+        MessageQueue {
+            messages: Vec::new(),
+        }
     }
 
     pub fn send(&mut self, from: u64, to: u64, data: &str) {

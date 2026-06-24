@@ -6,22 +6,18 @@ global_asm!(
     "   mrs x0, mpidr_el1",
     "   and x0, x0, #0xFF",
     "   cbnz x0, halt",
-
     // Enable NEON/FP at EL1
     // CPACR_EL1 bits [21:20] = 0b11 enables FP/SIMD access
     "   mrs x0, cpacr_el1",
     "   orr x0, x0, #(0x3 << 20)",
     "   msr cpacr_el1, x0",
     "   isb",
-
     // Set stack pointer
     "   mov x0, #0x4800",
     "   lsl x0, x0, #16",
     "   mov sp, x0",
-
     "   bl zero_bss",
     "   bl kernel_main_arm",
-
     "halt:",
     "   wfe",
     "   b halt",

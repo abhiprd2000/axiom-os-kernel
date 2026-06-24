@@ -1,9 +1,9 @@
-use alloc::vec::Vec;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use x86_64::{
     VirtAddr,
-    structures::paging::{PageTable, PhysFrame, Size4KiB, FrameAllocator},
     registers::control::Cr3,
+    structures::paging::{FrameAllocator, PageTable, PhysFrame, Size4KiB},
 };
 #[allow(dead_code)]
 fn process_exit() -> ! {
@@ -17,8 +17,12 @@ use crate::task::simple::{TaskContext, switch_context};
 pub struct ProcessId(u64);
 
 impl ProcessId {
-    pub fn new(id: u64) -> Self { ProcessId(id) }
-    pub fn as_u64(&self) -> u64 { self.0 }
+    pub fn new(id: u64) -> Self {
+        ProcessId(id)
+    }
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
 }
 
 pub struct Process {
@@ -75,11 +79,11 @@ impl Process {
         &self.task_context as *const TaskContext
     }
 
-   pub unsafe fn activate(&self) {
-    unsafe {
-        Cr3::write(self.page_table_frame, Cr3::read().1);
+    pub unsafe fn activate(&self) {
+        unsafe {
+            Cr3::write(self.page_table_frame, Cr3::read().1);
+        }
     }
-}
 }
 
 pub struct ProcessManager {
@@ -89,7 +93,10 @@ pub struct ProcessManager {
 
 impl ProcessManager {
     pub fn new() -> Self {
-        ProcessManager { processes: Vec::new(), current: 0 }
+        ProcessManager {
+            processes: Vec::new(),
+            current: 0,
+        }
     }
 
     pub fn spawn(
@@ -100,7 +107,13 @@ impl ProcessManager {
         physical_memory_offset: VirtAddr,
         kernel_page_table: &PageTable,
     ) {
-        let p = Process::new(id, entry_point, frame_allocator, physical_memory_offset, kernel_page_table);
+        let p = Process::new(
+            id,
+            entry_point,
+            frame_allocator,
+            physical_memory_offset,
+            kernel_page_table,
+        );
         self.processes.push(p);
     }
 
@@ -113,12 +126,16 @@ impl ProcessManager {
     }
 
     pub fn switch_to_next(&mut self) {
-        if self.processes.len() < 2 { return; }
+        if self.processes.len() < 2 {
+            return;
+        }
         let next = (self.current + 1) % self.processes.len();
         let old_ctx = self.processes[self.current].context_mut();
         let new_ctx = self.processes[next].context();
         self.current = next;
-        unsafe { switch_context(old_ctx, new_ctx); }
+        unsafe {
+            switch_context(old_ctx, new_ctx);
+        }
     }
 }
 
@@ -140,8 +157,17 @@ impl ProcessManager {
             return;
         }
         for p in &self.processes {
-            let marker = if p.id.as_u64() == self.current_id().unwrap_or(0) { "*" } else { " " };
-            crate::println!("  {}PID={} ctx_rsp={:#x}", marker, p.id.as_u64(), p.task_context.rsp);
+            let marker = if p.id.as_u64() == self.current_id().unwrap_or(0) {
+                "*"
+            } else {
+                " "
+            };
+            crate::println!(
+                "  {}PID={} ctx_rsp={:#x}",
+                marker,
+                p.id.as_u64(),
+                p.task_context.rsp
+            );
         }
     }
 }

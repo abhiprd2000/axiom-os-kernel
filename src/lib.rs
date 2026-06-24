@@ -10,29 +10,29 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 // Shared modules - work on all architectures
-pub mod print;
-pub mod vfs;
-pub mod provenance;
-#[cfg(target_arch = "x86_64")]
-pub mod pmc;
 #[cfg(target_arch = "x86_64")]
 pub mod benchmark;
-pub mod ramdisk;
+#[cfg(target_arch = "x86_64")]
+pub mod calc;
+#[cfg(target_arch = "x86_64")]
+pub mod editor;
 pub mod fat32;
-#[cfg(target_arch = "x86_64")]
-pub mod mitra;
-#[cfg(target_arch = "x86_64")]
-pub mod scheduler;
 #[cfg(target_arch = "x86_64")]
 pub mod ipc;
 #[cfg(target_arch = "x86_64")]
-pub mod syscall;
+pub mod mitra;
+#[cfg(target_arch = "x86_64")]
+pub mod pmc;
+pub mod print;
+pub mod provenance;
+pub mod ramdisk;
+#[cfg(target_arch = "x86_64")]
+pub mod scheduler;
 #[cfg(target_arch = "x86_64")]
 pub mod shell;
 #[cfg(target_arch = "x86_64")]
-pub mod editor;
-#[cfg(target_arch = "x86_64")]
-pub mod calc;
+pub mod syscall;
+pub mod vfs;
 
 // x86_64 only modules
 #[cfg(target_arch = "x86_64")]
@@ -40,17 +40,17 @@ pub mod allocator;
 #[cfg(target_arch = "x86_64")]
 pub mod ata;
 #[cfg(target_arch = "x86_64")]
-pub mod process;
-#[cfg(target_arch = "x86_64")]
-pub mod task;
-#[cfg(target_arch = "x86_64")]
 pub mod gdt;
 #[cfg(target_arch = "x86_64")]
 pub mod interrupts;
 #[cfg(target_arch = "x86_64")]
 pub mod memory;
 #[cfg(target_arch = "x86_64")]
+pub mod process;
+#[cfg(target_arch = "x86_64")]
 pub mod serial;
+#[cfg(target_arch = "x86_64")]
+pub mod task;
 #[cfg(target_arch = "x86_64")]
 pub mod vga_buffer;
 
@@ -85,7 +85,7 @@ pub fn hlt_loop() -> ! {
 #[repr(u32)]
 pub enum QemuExitCode {
     Success = 0x10,
-    Failed  = 0x11,
+    Failed = 0x11,
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -137,9 +137,9 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 
 // x86_64 globals
 #[cfg(target_arch = "x86_64")]
-use spin::Mutex;
-#[cfg(target_arch = "x86_64")]
 use lazy_static::lazy_static;
+#[cfg(target_arch = "x86_64")]
+use spin::Mutex;
 
 #[cfg(target_arch = "x86_64")]
 lazy_static! {
@@ -155,8 +155,7 @@ pub static PHYS_MEM_OFFSET: spin::Mutex<u64> = spin::Mutex::new(0);
 
 #[cfg(target_arch = "x86_64")]
 lazy_static! {
-    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> =
-        Mutex::new(None);
+    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> = Mutex::new(None);
 }
 
 // x86_64 test entry point

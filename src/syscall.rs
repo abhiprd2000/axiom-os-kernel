@@ -1,9 +1,9 @@
 use crate::println;
 
-pub const SYS_EXIT:   u64 = 1;
-pub const SYS_YIELD:  u64 = 2;
-pub const SYS_SPAWN:  u64 = 3;
-pub const SYS_WRITE:  u64 = 4;
+pub const SYS_EXIT: u64 = 1;
+pub const SYS_YIELD: u64 = 2;
+pub const SYS_SPAWN: u64 = 3;
+pub const SYS_WRITE: u64 = 4;
 pub const SYS_VERIFY: u64 = 5;
 
 pub fn handle_syscall(number: u64, arg0: u64) -> u64 {

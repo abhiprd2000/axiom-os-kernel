@@ -1,7 +1,7 @@
-use alloc::vec::Vec;
-use alloc::string::String;
-use crate::provenance::provenance_hash;
 use crate::println;
+use crate::provenance::provenance_hash;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 /// Provenance block granularity (standard 4 KiB, matching fs-verity/dm-verity).
 pub const BLOCK_SIZE: usize = 4096;
@@ -28,7 +28,9 @@ pub struct FileNode {
 
 /// One BLAKE3 hash per BLOCK_SIZE chunk (last chunk may be short).
 fn compute_block_hashes(data: &[u8]) -> Vec<[u8; 32]> {
-    data.chunks(BLOCK_SIZE).map(|c| provenance_hash(c)).collect()
+    data.chunks(BLOCK_SIZE)
+        .map(|c| provenance_hash(c))
+        .collect()
 }
 
 /// BLAKE3 Merkle root over the leaves: pairs hashed bottom-up, a lone node is
@@ -99,10 +101,7 @@ impl FileNode {
     }
 
     pub fn verify(&self) -> bool {
-        crate::provenance::constant_time_eq(
-            &provenance_hash(&self.data),
-            &self.provenance_hash
-        )
+        crate::provenance::constant_time_eq(&provenance_hash(&self.data), &self.provenance_hash)
     }
 
     /// Block-level: verify only the leaves overlapping [offset, offset+len).
@@ -163,7 +162,7 @@ impl VirtualFS {
         VirtualFS { files: Vec::new() }
     }
 
-/// Store a provenance-locked file. Hash computed and bound at write time.
+    /// Store a provenance-locked file. Hash computed and bound at write time.
     pub fn create(&mut self, name: &str, data: &[u8]) {
         self.files.push(FileNode::new_file(name, data));
     }
@@ -174,11 +173,14 @@ impl VirtualFS {
     pub fn create_untrusted(&mut self, name: &str, data: &[u8]) {
         self.files.push(FileNode::new_file_untrusted(name, data));
     }
-    
+
     pub fn read(&self, name: &str) -> Option<&[u8]> {
         let file = self.files.iter().find(|f| f.name == name)?;
         if !file.verify() {
-            println!("[AXIOM KERNEL] READ BLOCKED: \"{}\" provenance violation", name);
+            println!(
+                "[AXIOM KERNEL] READ BLOCKED: \"{}\" provenance violation",
+                name
+            );
             return None;
         }
         Some(file.data.as_slice())
@@ -193,8 +195,11 @@ impl VirtualFS {
             return None;
         }
         if !file.verify_range(offset, len) {
-            println!("[AXIOM KERNEL] READ BLOCKED: \"{}\" block {} provenance violation",
-                name, offset / BLOCK_SIZE);
+            println!(
+                "[AXIOM KERNEL] READ BLOCKED: \"{}\" block {} provenance violation",
+                name,
+                offset / BLOCK_SIZE
+            );
             return None;
         }
         Some(&file.data[offset..end])
@@ -210,11 +215,15 @@ impl VirtualFS {
 
     /// Current Merkle root for a file (recomputed lazily if dirty).
     pub fn merkle_root(&mut self, name: &str) -> Option<[u8; 32]> {
-        self.files.iter_mut().find(|f| f.name == name).map(|f| f.merkle_root())
+        self.files
+            .iter_mut()
+            .find(|f| f.name == name)
+            .map(|f| f.merkle_root())
     }
 
     pub fn verify(&self, name: &str) -> Option<bool> {
-        self.files.iter()
+        self.files
+            .iter()
             .find(|f| f.name == name)
             .map(|f| f.verify())
     }

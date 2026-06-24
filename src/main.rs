@@ -2,18 +2,17 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 extern crate alloc;
-use bootloader::{entry_point, BootInfo};
-use core::panic::PanicInfo;
 use axiom_os::{
-    task::{Task, executor::SimpleExecutor, keyboard::ScancodeStream},
     println,
+    task::{Task, executor::SimpleExecutor, keyboard::ScancodeStream},
 };
+use bootloader::{BootInfo, entry_point};
+use core::panic::PanicInfo;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    use axiom_os::{
-    allocator, memory};
+    use axiom_os::{allocator, memory};
     use x86_64::VirtAddr;
 
     axiom_os::init();
@@ -21,14 +20,11 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
     *axiom_os::PHYS_MEM_OFFSET.lock() = boot_info.physical_memory_offset;
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe {
-        memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
-    };
-    allocator::init_heap(&mut mapper, &mut frame_allocator)
-        .expect("heap init failed");
-    *axiom_os::FRAME_ALLOCATOR.lock() = Some(unsafe {
-        memory::BootInfoFrameAllocator::init(&boot_info.memory_map)
-    });
+    let mut frame_allocator =
+        unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap init failed");
+    *axiom_os::FRAME_ALLOCATOR.lock() =
+        Some(unsafe { memory::BootInfoFrameAllocator::init(&boot_info.memory_map) });
 
     // Initialize process isolation
     use x86_64::structures::paging::PageTable;
@@ -40,9 +36,27 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     };
     {
         let mut pm = axiom_os::PROCESS_MANAGER.lock();
-        pm.spawn(1, process_a, &mut frame_allocator, phys_mem_offset, kernel_l4);
-        pm.spawn(2, process_b, &mut frame_allocator, phys_mem_offset, kernel_l4);
-        pm.spawn(3, process_c, &mut frame_allocator, phys_mem_offset, kernel_l4);
+        pm.spawn(
+            1,
+            process_a,
+            &mut frame_allocator,
+            phys_mem_offset,
+            kernel_l4,
+        );
+        pm.spawn(
+            2,
+            process_b,
+            &mut frame_allocator,
+            phys_mem_offset,
+            kernel_l4,
+        );
+        pm.spawn(
+            3,
+            process_c,
+            &mut frame_allocator,
+            phys_mem_offset,
+            kernel_l4,
+        );
     }
     println!("  ___  __  __ ___ ___  __  __    ___  ___ ");
     println!(" / _ \\|  \\/  |_ _/ _ \\|  \\/  |  / _ \\ ");
@@ -59,7 +73,19 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     println!("  Type help for commands.");
     println!("");
     let disk_ok = axiom_os::ata::init();
-    if disk_ok { axiom_os::vga_buffer::println_colored("  Persistent disk: ONLINE", axiom_os::vga_buffer::Color::LightGreen, axiom_os::vga_buffer::Color::Black); } else { axiom_os::vga_buffer::println_colored("  Persistent disk: OFFLINE", axiom_os::vga_buffer::Color::LightRed, axiom_os::vga_buffer::Color::Black); }
+    if disk_ok {
+        axiom_os::vga_buffer::println_colored(
+            "  Persistent disk: ONLINE",
+            axiom_os::vga_buffer::Color::LightGreen,
+            axiom_os::vga_buffer::Color::Black,
+        );
+    } else {
+        axiom_os::vga_buffer::println_colored(
+            "  Persistent disk: OFFLINE",
+            axiom_os::vga_buffer::Color::LightRed,
+            axiom_os::vga_buffer::Color::Black,
+        );
+    }
     println!("");
     let mut executor = SimpleExecutor::new();
     executor.spawn(Task::new(keyboard_task()));
@@ -68,16 +94,26 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     axiom_os::hlt_loop();
 }
 
-fn process_a() -> ! { loop {} }
-fn process_b() -> ! { loop {} }
-fn process_c() -> ! { loop {} }
+fn process_a() -> ! {
+    loop {}
+}
+fn process_b() -> ! {
+    loop {}
+}
+fn process_c() -> ! {
+    loop {}
+}
 
 async fn keyboard_task() {
-    use futures_util::stream::StreamExt;
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use alloc::string::String;
+    use futures_util::stream::StreamExt;
+    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
     let mut scancodes = ScancodeStream::new();
-    let mut keyboard = Keyboard::new(ScancodeSet1::new(), layouts::Us104Key, HandleControl::MapLettersToUnicode);
+    let mut keyboard = Keyboard::new(
+        ScancodeSet1::new(),
+        layouts::Us104Key,
+        HandleControl::MapLettersToUnicode,
+    );
     let mut input_buf = String::new();
     let mut hist_cursor: usize = 0;
     axiom_os::print!("> ");
@@ -99,7 +135,10 @@ async fn keyboard_task() {
                     if let Some(ref mut editor) = *ea {
                         let quit = match key {
                             DecodedKey::Unicode(c) => editor.handle_char(c),
-                            DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp)   => { editor.handle_char('\0'); false }
+                            DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp) => {
+                                editor.handle_char('\0');
+                                false
+                            }
                             _ => false,
                         };
                         if quit {
@@ -127,12 +166,34 @@ async fn keyboard_task() {
                     }
                     DecodedKey::Unicode('\t') => {
                         let commands = [
-                            "trust", "verify", "tamper", "cat", "ls", "write", "echo",
-                            "diskwrite", "diskread", "diskls", "diskverify", "disktamper",
-                            "ps", "kill", "spawn", "hash", "bench", "mitra", "run",
-                            "sysinfo", "history", "help", "clear", "info", "axiom",
+                            "trust",
+                            "verify",
+                            "tamper",
+                            "cat",
+                            "ls",
+                            "write",
+                            "echo",
+                            "diskwrite",
+                            "diskread",
+                            "diskls",
+                            "diskverify",
+                            "disktamper",
+                            "ps",
+                            "kill",
+                            "spawn",
+                            "hash",
+                            "bench",
+                            "mitra",
+                            "run",
+                            "sysinfo",
+                            "history",
+                            "help",
+                            "clear",
+                            "info",
+                            "axiom",
                         ];
-                        let matches: alloc::vec::Vec<&str> = commands.iter()
+                        let matches: alloc::vec::Vec<&str> = commands
+                            .iter()
                             .filter(|c| c.starts_with(input_buf.as_str()))
                             .copied()
                             .collect();
@@ -145,7 +206,9 @@ async fn keyboard_task() {
                             axiom_os::print!("{}", completed);
                         } else if matches.len() > 1 {
                             axiom_os::println!();
-                            for m in &matches { axiom_os::print!("  {}", m); }
+                            for m in &matches {
+                                axiom_os::print!("  {}", m);
+                            }
                             axiom_os::println!();
                             axiom_os::print!("> {}", input_buf);
                         }
@@ -156,10 +219,14 @@ async fn keyboard_task() {
                     }
                     DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowUp) => {
                         let hist = axiom_os::shell::HISTORY.lock();
-                        let len  = *axiom_os::shell::HIST_LEN.lock();
-                        let pos  = *axiom_os::shell::HIST_POS.lock();
-                        if len == 0 { continue; }
-                        if hist_cursor < len { hist_cursor += 1; }
+                        let len = *axiom_os::shell::HIST_LEN.lock();
+                        let pos = *axiom_os::shell::HIST_POS.lock();
+                        if len == 0 {
+                            continue;
+                        }
+                        if hist_cursor < len {
+                            hist_cursor += 1;
+                        }
                         let idx = (pos + 10 - hist_cursor) % 10;
                         let entry = hist[idx].clone();
                         drop(hist);
@@ -172,7 +239,7 @@ async fn keyboard_task() {
                     }
                     DecodedKey::RawKey(pc_keyboard::KeyCode::ArrowDown) => {
                         let hist = axiom_os::shell::HISTORY.lock();
-                        let pos  = *axiom_os::shell::HIST_POS.lock();
+                        let pos = *axiom_os::shell::HIST_POS.lock();
                         // Clear current line
                         for _ in 0..input_buf.len() {
                             axiom_os::vga_buffer::WRITER.lock().backspace();
