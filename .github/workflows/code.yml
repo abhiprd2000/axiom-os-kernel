@@ -112,7 +112,7 @@ jobs:
         run: qemu-system-x86_64 --version
 
       - name: Run cargo bootimage
-        run: cargo bootimage
+        run: cargo bootimage --bin axiom_os
 
       - name: Run cargo test
         run: cargo test
