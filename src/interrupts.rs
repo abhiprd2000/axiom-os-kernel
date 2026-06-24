@@ -83,12 +83,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     }
 }
 
-extern "x86-interrupt" fn syscall_handler(_stack_frame: InterruptStackFrame) {
-    // Read rax (syscall number) and rdi (arg0) from stack frame
-    // For now log and return
-    crate::println!("[syscall] interrupt 0x80 triggered");
-}
-
 extern "x86-interrupt" fn syscall_handler_real(_stack_frame: InterruptStackFrame) {
     let number: u64;
     let arg0: u64;
