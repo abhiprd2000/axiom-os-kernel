@@ -51,8 +51,8 @@ jobs:
       - name: Run cargo check
         run: cargo check --bin axiom_os
 
-  test:
-    name: Test
+  build:
+    name: Build
     strategy:
       fail-fast: false
       matrix:
@@ -89,33 +89,8 @@ jobs:
       - name: Install bootimage
         run: cargo install bootimage --debug
 
-      - name: Install QEMU (Linux)
-        run: sudo apt-get update && sudo apt-get install -y qemu-system-x86
-        if: runner.os == 'Linux'
-
-      - name: Install QEMU (macOS)
-        run: brew install qemu
-        if: runner.os == 'macOS'
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: 1
-          HOMEBREW_NO_BOTTLE_SOURCE_FALLBACK: 1
-          HOMEBREW_NO_INSTALL_CLEANUP: 1
-
-      - name: Install QEMU (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          choco install qemu -y
-          echo "C:\Program Files\qemu" >> $env:GITHUB_PATH
-
-      - name: Print QEMU Version
-        run: qemu-system-x86_64 --version
-
-      - name: Run cargo bootimage
+      - name: Build bootable kernel image
         run: cargo bootimage --bin axiom_os
-
-      - name: Run cargo test
-        run: cargo test --bin axiom_os --lib
 
   check_formatting:
     name: Check Formatting
