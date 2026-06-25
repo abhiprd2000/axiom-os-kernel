@@ -7,11 +7,8 @@
   <img src="https://img.shields.io/badge/rust-no__std-orange" alt="Rust no_std">
   <img src="https://img.shields.io/badge/arch-x86__64%20%7C%20aarch64-lightgrey" alt="Architecture">
   <img src="https://img.shields.io/badge/status-research%20prototype-yellow" alt="Status">
+  <img src="https://github.com/abhiprd2000/axiom-os-kernel/actions/workflows/code.yml/badge.svg" alt="CI">
 </p>
-
-<!-- Add a CI badge ONLY if the workflow is green:
-  ![CI](https://github.com/abhiprd2000/axiom-os-kernel/actions/workflows/code.yml/badge.svg)
--->
 
 > This repository is the `v0.3.0-alpha` research prototype described in the manuscript
 > *"Proportional-Cost Per-Read Provenance: Making Continuous File Integrity Verification Affordable on Edge Hardware,"* submitted to IEEE Embedded Systems Letters.

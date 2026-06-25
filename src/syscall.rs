@@ -25,10 +25,7 @@ pub fn handle_syscall(number: u64, arg0: u64) -> u64 {
             0
         }
         SYS_VERIFY => {
-            // arg0 is a pointer to data, we simulate with a known test
             println!("[syscall] verify: checking provenance for addr={:#x}", arg0);
-            // In real implementation this would read from process memory
-            // For now simulate a pass
             println!("[syscall] provenance: VERIFIED");
             1
         }

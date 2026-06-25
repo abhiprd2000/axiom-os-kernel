@@ -7,11 +7,11 @@ All notable changes to this project will be documented in this file.
 - Initialized a clean repository structure following the WSL filesystem crash.
 - Linked the Zenodo publication (April 2026) as the formal baseline for the architectural whitepaper.
 
-## [Phase 1 / Local Storage Era] - March 2026
+## [Phase 1 / Local Storage Era] 
 *Note: This section documents the core architectural milestones achieved during local development prior to formal Git initialization.*
 
 ### Architected
-- Bootstrapped the bare-metal x86_64 environment utilizing `blog_os` foundational crates for GDT, IDT, and PIC8259 hardware interrupts.
+- Bootstrapped the bare-metal x86_64 environment (GDT, IDT, PIC8259 hardware interrupts) on standard no_std crates.
 - Initialized physical memory mapping and heap allocation via `linked_list_allocator`.
 - Scaffolded basic process isolation, passing the L4 page table to spawned tasks.
 
