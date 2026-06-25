@@ -420,7 +420,7 @@ pub fn interpret_command(command: &str) {
                     bw.report();
                     bb.report();
 
-                    // cycles + LLC misses per path — only when explicitly asked (KVM/bare-metal)
+                    // cycles + LLC misses per path - only when explicitly asked (KVM/bare-metal)
                     if want_pmc {
                         let (_, wmiss, wcyc) = pmc::measure(|| {
                             let r = v.read(black_box("bench"));
@@ -475,7 +475,7 @@ pub fn interpret_command(command: &str) {
             println!("");
 
             println!(
-                "--- FAT32 persistent read+verify (skipped by default — it WRITES to disk) ---"
+                "--- FAT32 persistent read+verify (skipped by default - it WRITES to disk) ---"
             );
             println!(
                 "[bench] run 'bench disk' to include it, and ONLY against a throwaway disk image"
@@ -508,7 +508,7 @@ pub fn interpret_command(command: &str) {
                 b.report();
             }
             println!("");
-            println!("[bench] done — run 5 cold boots and record all values");
+            println!("[bench] done - run 5 cold boots and record all values");
         }
 
         "mitra" => {
@@ -649,7 +649,7 @@ pub fn interpret_command(command: &str) {
             }
             // read_file verifies provenance atomically under a single lock
             // acquisition before returning data. Returning Some(data) is proof
-            // the hash matched — no second verify_file call needed. A separate
+            // the hash matched - no second verify_file call needed. A separate
             // call would re-acquire the lock after data is already in hand,
             // creating a TOCTOU gap between the check and the data we hold.
             let script = FAT32.lock().read_file(arg);
@@ -658,7 +658,7 @@ pub fn interpret_command(command: &str) {
                     // read_file already printed READ BLOCKED on hash failure.
                     vga_buffer::println_colored(
                         &alloc::format!(
-                            "[AXIOM KERNEL] SCRIPT BLOCKED: {} — provenance failed or not found",
+                            "[AXIOM KERNEL] SCRIPT BLOCKED: {} - provenance failed or not found",
                             arg
                         ),
                         Color::LightRed,
@@ -704,7 +704,7 @@ pub fn interpret_command(command: &str) {
         }
         "write" => {
             // Stores data with a zeroed provenance record. The kernel blocks
-            // every read of this file — use `trust` for readable files.
+            // every read of this file - use `trust` for readable files.
             let sub: Vec<&str> = arg.splitn(2, ' ').collect();
             if sub.len() < 2 {
                 println!("[error] usage: write <name> <content>");
@@ -716,7 +716,7 @@ pub fn interpret_command(command: &str) {
             vfs.create_untrusted(name, content);
             vga_buffer::println_colored(
                 &alloc::format!(
-                    "[vfs] written: {} ({} bytes) — NO provenance record",
+                    "[vfs] written: {} ({} bytes) - NO provenance record",
                     name,
                     content.len()
                 ),
@@ -724,7 +724,7 @@ pub fn interpret_command(command: &str) {
                 Color::Black,
             );
             println!(
-                "[kernel] reads of '{}' will be blocked — use 'trust' for readable files",
+                "[kernel] reads of '{}' will be blocked - use 'trust' for readable files",
                 name
             );
         }

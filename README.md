@@ -7,16 +7,13 @@
   <img src="https://img.shields.io/badge/rust-no__std-orange" alt="Rust no_std">
   <img src="https://img.shields.io/badge/arch-x86__64%20%7C%20aarch64-lightgrey" alt="Architecture">
   <img src="https://img.shields.io/badge/status-research%20prototype-yellow" alt="Status">
+  <img src="https://github.com/abhiprd2000/axiom-os-kernel/actions/workflows/code.yml/badge.svg" alt="CI">
 </p>
-
-<!-- Add a CI badge ONLY if the workflow is green:
-  ![CI](https://github.com/abhiprd2000/axiom-os-kernel/actions/workflows/code.yml/badge.svg)
--->
 
 > This repository is the `v0.3.0-alpha` research prototype described in the manuscript
 > *"Proportional-Cost Per-Read Provenance: Making Continuous File Integrity Verification Affordable on Edge Hardware,"* submitted to IEEE Embedded Systems Letters.
 
-A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance on **every read** — not just at load time — and makes that affordable by verifying only the file blocks a read actually touches.
+A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance on **every read** - not just at load time - and makes that affordable by verifying only the file blocks a read actually touches.
 
 > *No data is better than faulty data.*
 
@@ -24,9 +21,9 @@ A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance
 
 ## Why
 
-Most integrity mechanisms verify **once**: at boot, at open, or when a page is first read from storage (fs-verity, dm-verity, IMA). After that, the cached in-memory copy is trusted. If something tampers with that cached page *after* the check — a memory bug, a DMA-capable peripheral, a row-hammer flip — every later read returns the corrupted bytes as authentic. This is a live class of attack (e.g. Dirty Pipe, Copy Fail).
+Most integrity mechanisms verify **once**: at boot, at open, or when a page is first read from storage (fs-verity, dm-verity, IMA). After that, the cached in-memory copy is trusted. If something tampers with that cached page *after* the check - a memory bug, a DMA-capable peripheral, a row-hammer flip - every later read returns the corrupted bytes as authentic. This is a live class of attack (e.g. Dirty Pipe, Copy Fail).
 
-Axiom re-verifies the in-memory data on **every read**, so that tampering is caught on the next read. The naive way to do this — re-hash the whole file each read — costs *O(file size)* per read and is impractical on small devices. Axiom makes it affordable.
+Axiom re-verifies the in-memory data on **every read**, so that tampering is caught on the next read. The naive way to do this - re-hash the whole file each read - costs *O(file size)* per read and is impractical on small devices. Axiom makes it affordable.
 
 ## How
 
@@ -38,11 +35,11 @@ Axiom re-verifies the in-memory data on **every read**, so that tampering is cau
 - A ranged read `read_range(offset, len)` maps to the blocks it overlaps and re-hashes **only those blocks**, comparing each against its stored leaf in constant time. Per-read cost becomes *O(bytes read)*, not *O(file size)*.
 - A **lazy Merkle root** over the block leaves is a single 32-byte commitment to the file; a single-block write updates one leaf and defers the root recomputation, so a write costs one block hash instead of a full rehash.
 
-Unlike out-of-band detectors that periodically re-scan files, Axiom enforces integrity **inline** on the read path — every read is verified before its bytes are returned, leaving no detection window.
+Unlike out-of-band detectors that periodically re-scan files, Axiom enforces integrity **inline** on the read path - every read is verified before its bytes are returned, leaving no detection window.
 
 ## Results
 
-Per-read **block-level verification is constant** regardless of file size — about **2.7 µs** (x86-64) and **3.65 µs** (ARM64) — while whole-file verification grows with size. Median wall-clock times on real hardware, from the `bench-native` harness:
+Per-read **block-level verification is constant** regardless of file size - about **2.7 µs** (x86-64) and **3.65 µs** (ARM64) - while whole-file verification grows with size. Median wall-clock times on real hardware, from the `bench-native` harness:
 
 | File size | Blocks | x86-64 whole (ms) | x86-64 block (ms) | ARM64 whole (ms) | ARM64 block (ms) |
 |-----------|-------:|------------------:|------------------:|-----------------:|-----------------:|
@@ -64,10 +61,10 @@ At 4 MiB, block-level verification is **~810× cheaper** (x86-64) and **~1020× 
 - **Release:** `v0.3.0-alpha` (research prototype)
 
 **Provenance layer:**
-- `vfs.rs` — per-block BLAKE3 leaves; `read_range` / `verify_range` (verify only touched blocks); `write_block` + lazy `merkle_root`.
-- `provenance.rs` — `provenance_hash` (BLAKE3) and a constant-time comparison primitive.
-- `fat32.rs` — on-disk hash store for the persistent path.
-- `mitra/` — a small DSL whose `trusted_data` type routes through the verified read path.
+- `vfs.rs` - per-block BLAKE3 leaves; `read_range` / `verify_range` (verify only touched blocks); `write_block` + lazy `merkle_root`.
+- `provenance.rs` - `provenance_hash` (BLAKE3) and a constant-time comparison primitive.
+- `fat32.rs` - on-disk hash store for the persistent path.
+- `mitra/` - a small DSL whose `trusted_data` type routes through the verified read path.
 
 **Kernel subsystems:** GDT/IDT, 8 MB linked-list heap, priority scheduler, per-process page tables (CR3 isolation), IPC queues, ATA PIO driver, syscall interface (INT 0x80), interactive shell.
 
@@ -122,7 +119,7 @@ Assumes an adversary who can modify a file's in-memory bytes after they were val
 
 ## Paper
 
-- Earlier formulation (whole-file per-read, equity framing): Zenodo, Apr. 2026 — [doi:10.5281/zenodo.19387932](https://doi.org/10.5281/zenodo.19387932)
+- Earlier formulation (whole-file per-read, equity framing): Zenodo, Apr. 2026 - [doi:10.5281/zenodo.19387932](https://doi.org/10.5281/zenodo.19387932)
 
 ## License
 

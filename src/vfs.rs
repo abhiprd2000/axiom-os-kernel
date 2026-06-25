@@ -81,7 +81,7 @@ impl FileNode {
             name: String::from(name),
             file_type: FileType::Regular,
             data: Vec::from(data),
-            provenance_hash: [0u8; 32], // deliberately invalid — always fails verify()
+            provenance_hash: [0u8; 32], // deliberately invalid - always fails verify()
             block_hashes: alloc::vec![[0u8; 32]; nblocks], // also fails verify_range()
             merkle_root: [0u8; 32],
             root_dirty: false,
@@ -168,7 +168,7 @@ impl VirtualFS {
     }
 
     /// Store an untrusted file with no valid provenance record. The kernel
-    /// blocks all reads — the file exists in the VFS but is unreadable through
+    /// blocks all reads - the file exists in the VFS but is unreadable through
     /// the enforced path. Demonstrates the enforcement boundary.
     pub fn create_untrusted(&mut self, name: &str, data: &[u8]) {
         self.files.push(FileNode::new_file_untrusted(name, data));

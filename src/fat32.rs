@@ -140,7 +140,7 @@ impl Fat32 {
         let clu = match self.alloc_cluster() {
             Some(c) => c,
             None => {
-                println!("[fat32] error: disk full — no free clusters");
+                println!("[fat32] error: disk full - no free clusters");
                 return;
             }
         };

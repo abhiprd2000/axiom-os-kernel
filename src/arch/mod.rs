@@ -5,5 +5,5 @@
 pub mod aarch64;
 
 #[cfg(target_arch = "x86_64")]
-// x86_64 arch is handled by existing blog_os structure
+// x86_64 is the primary architecture, configured at the crate root
 pub mod x86_64 {}

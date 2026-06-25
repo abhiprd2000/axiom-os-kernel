@@ -41,7 +41,7 @@ impl Editor {
                 // Ctrl+Q
                 if self.modified {
                     vga_buffer::println_colored(
-                        "[editor] unsaved changes — press Ctrl+S to save or Ctrl+Q again to quit",
+                        "[editor] unsaved changes - press Ctrl+S to save or Ctrl+Q again to quit",
                         Color::LightRed,
                         Color::Black,
                     );
