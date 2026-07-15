@@ -17,6 +17,7 @@ A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance
 
 > *No data is better than faulty data.*
 
+Special Thanks goes to Prof. Subodh Kumar, IIT Delhi whose heartfelt mentroship shaped the profiling and block - level framework. 
 ---
 
 ## Why
