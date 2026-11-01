@@ -10,19 +10,18 @@
   <img src="https://github.com/abhiprd2000/axiom-os-kernel/actions/workflows/code.yml/badge.svg" alt="CI">
 </p>
 
-> This repository is the `v0.3.0-alpha` research prototype described in the manuscript
-> *"Proportional-Cost Per-Read Provenance: Making Continuous File Integrity Verification Affordable on Edge Hardware,"* submitted to IEEE Embedded Systems Letters.
+> This repository is the `v0.3.0-alpha` research prototype.
 
 A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance on **every read** - not just at load time - and makes that affordable by verifying only the file blocks a read actually touches.
 
 > *No data is better than faulty data.*
 
-Special Thanks goes to Prof. Subodh Kumar, IIT Delhi whose heartfelt mentroship shaped the profiling and block - level framework. 
+Special thanks to Prof. Subodh Kumar (IIT Delhi), whose advice shaped the profiling and the block-level design.
 ---
 
 ## Why
 
-Most integrity mechanisms verify **once**: at boot, at open, or when a page is first read from storage (fs-verity, dm-verity, IMA). After that, the cached in-memory copy is trusted. If something tampers with that cached page *after* the check - a memory bug, a DMA-capable peripheral, a row-hammer flip - every later read returns the corrupted bytes as authentic. This is a live class of attack (e.g. Dirty Pipe, Copy Fail).
+Most integrity mechanisms verify **once**: at boot, at open, or when a page is first read from storage (fs-verity, dm-verity, IMA). After that, the cached in-memory copy is trusted. If something tampers with that cached page *after* the check - a memory bug or a kernel vulnerability - every later read returns the corrupted bytes as authentic. This is a live class of attack (e.g. Dirty Pipe).
 
 Axiom re-verifies the in-memory data on **every read**, so that tampering is caught on the next read. The naive way to do this - re-hash the whole file each read - costs *O(file size)* per read and is impractical on small devices. Axiom makes it affordable.
 
@@ -36,7 +35,7 @@ Axiom re-verifies the in-memory data on **every read**, so that tampering is cau
 - A ranged read `read_range(offset, len)` maps to the blocks it overlaps and re-hashes **only those blocks**, comparing each against its stored leaf in constant time. Per-read cost becomes *O(bytes read)*, not *O(file size)*.
 - A **lazy Merkle root** over the block leaves is a single 32-byte commitment to the file; a single-block write updates one leaf and defers the root recomputation, so a write costs one block hash instead of a full rehash.
 
-Unlike out-of-band detectors that periodically re-scan files, Axiom enforces integrity **inline** on the read path - every read is verified before its bytes are returned, leaving no detection window.
+Unlike out-of-band detectors that periodically re-scan files, Axiom enforces integrity **inline** on the read path - every read is verified before its bytes are returned.
 
 ## Results
 
@@ -121,6 +120,10 @@ Assumes an adversary who can modify a file's in-memory bytes after they were val
 ## Paper
 
 - Earlier formulation (whole-file per-read, equity framing): Zenodo, Apr. 2026 - [doi:10.5281/zenodo.19387932](https://doi.org/10.5281/zenodo.19387932)
+
+## Credits
+
+Axiom's base (boot, GDT/IDT, memory and heap, async tasks and keyboard) follows Philipp Oppermann's tutorial *Writing an OS in Rust* (blog_os, MIT/Apache-2.0). On top of it I built the per-block provenance layer (vfs.rs, provenance.rs), the FAT32 hash store, the ARM64 port, the tamper-demo shell commands and the benchmarks.
 
 ## License
 

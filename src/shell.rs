@@ -72,7 +72,7 @@ pub fn interpret_command(command: &str) {
             println!("  disktamper <name>   - simulate disk tampering attack");
             println!("  run <script.mtr>    - run Mitra script from FAT32 disk");
             println!("  --- Mitra DSL ---");
-            println!("  mitra <code>        - execute Mitra provenance-typed language");
+            println!("  mitra <code>        - run a small Mitra script (toy language)");
             println!("  --- Processes ---");
             println!("  ps                  - list processes");
             println!("  kill <pid>          - terminate process");
