@@ -17,6 +17,7 @@ A bare-metal `no_std` Rust kernel that enforces BLAKE3 file-integrity provenance
 > *No data is better than faulty data.*
 
 Special thanks to Prof. Subodh Kumar (IIT Delhi), whose advice shaped the profiling and the block-level design.
+
 ---
 
 ## Why
@@ -116,6 +117,10 @@ Assumes an adversary who can modify a file's in-memory bytes after they were val
 - Single-core; SMP / multi-core verification is future work.
 - BLAKE3 runs in portable mode in-kernel (no in-kernel SIMD yet); the native harness uses runtime SIMD.
 - Real-hardware results use a laptop and a phone; a dedicated embedded SoC (e.g. Raspberry Pi) measurement is the immediate next step.
+
+## Where this went next
+
+The per-block idea from Axiom became [model-integrity-bench](https://github.com/abhiprd2000/model-integrity-bench), a checker for AI model files that also handles honest updates: a signed, versioned hash tree, rollback protection, crash-safe commits, and a verified loader for ONNX Runtime and LiteRT. That work was accepted at the SustainableAIoT-Afrasia workshop of IEEE AIoT 2026.
 
 ## Paper
 
